@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.env/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Excel files (optional - remove if you want to track Excel files)
+*.xlsx
+*.xls
+
+# Local configuration
+*.ini
+
+# Logs
+*.log
+
+# Editor specific files
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Project specific
+# Add any project-specific files or directories to ignore

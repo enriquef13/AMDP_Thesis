@@ -1,10 +1,9 @@
 import matplotlib.pyplot as plt # type: ignore
 from matplotlib.colors import LinearSegmentedColormap # type: ignore
 from skimage import measure # type: ignore
-import numpy as np
+import numpy as np # type: ignore
 import pandas as pd # type: ignore
 import xlwings as xw # type: ignore
-        
 
 class Capabilities:
     def __init__(self, material, gauge):
@@ -288,21 +287,24 @@ class Capabilities:
             plt.contourf(self.X, self.Y, self.APB_feasible, levels=[0.5, 1], colors=self.region_colors['APB'], alpha=0.7)
 
         ax = plt.gca()
-        title_y = 1.02
+        title_y = 1.05
         title_x = 0.1
-        ax.text(0.49 - title_x, title_y, f'Manufacturing regions for {self.gauge_material}: ', transform=ax.transAxes, 
+        ax.text(0.49 - title_x, title_y, f'Feasible Manufacturing Regions: ', transform=ax.transAxes, 
                 fontsize=14, ha='center', va='bottom', fontweight='bold')
-        ax.text(0.76 - title_x, title_y, 'TL', transform=ax.transAxes, 
+        ax.text(0.75 - title_x, title_y, 'TL', transform=ax.transAxes, 
                 color=self.region_colors['TL'], fontsize=14, ha='center', va='bottom', fontweight='bold')
-        ax.text(0.79 - title_x, title_y, ' | ', transform=ax.transAxes, 
+        ax.text(0.78 - title_x, title_y, ' | ', transform=ax.transAxes, 
                 color='black', fontsize=14, ha='center', va='bottom', fontweight='bold')
-        ax.text(0.83 - title_x, title_y, 'MPB', transform=ax.transAxes, 
+        ax.text(0.82 - title_x, title_y, 'MPB', transform=ax.transAxes, 
                 color=self.region_colors['MPB'], fontsize=14, ha='center', va='bottom', fontweight='bold')
-        ax.text(0.87 - title_x, title_y, ' | ', transform=ax.transAxes, 
+        ax.text(0.86 - title_x, title_y, ' | ', transform=ax.transAxes, 
                 color='black', fontsize=14, ha='center', va='bottom', fontweight='bold')
-        ax.text(0.91 - title_x, title_y, 'APB', transform=ax.transAxes, 
+        ax.text(0.90 - title_x, title_y, 'APB', transform=ax.transAxes, 
                 color=self.region_colors['APB'], fontsize=14, ha='center', va='bottom', fontweight='bold')
         
+        ax.text(0.57 - title_x, title_y - 0.03, f'Gauge: {self.gauge}, Material: {self.material}', transform=ax.transAxes,
+                fontsize=14, ha='center', va='bottom', fontweight='bold')
+
         plt.axvline(self.max_sheet_width, color='black', linestyle='-', label=f'Max sheet dim = {self.max_sheet_width}, {self.max_sheet_length}')
         plt.axhline(self.max_sheet_length, color='black', linestyle='-')
         plt.axhline(self.max_sheet_width, color='black', linestyle='-')
@@ -375,14 +377,14 @@ class Capabilities:
         plt.legend(loc='upper right')
         plt.show()
 
-    def plot_individual_cost_heatmap(self, excel_path, fastener_spacing=3, bolt_diameter=0.3125):
+    def plot_individual_cost_heatmap(self, excel_path, start_row=150, fastener_spacing=3, bolt_diameter=0.3125, n_bins=100):
         self._get_constraints(-1, 341, 69)
         self._get_region_inputs(fastener_spacing)
 
         self.all_costs = {}
 
         for region, (proc1, proc2, fastener_func) in self.region_inputs.items():
-            self._get_all_costs(excel_path, 150, fastener_spacing, region, proc1, proc2, 
+            self._get_all_costs(excel_path, start_row, fastener_spacing, region, proc1, proc2, 
                                 fastener_func, bolt_diameter)
 
         # After all regions, determine global min/max for color scale
@@ -395,7 +397,6 @@ class Capabilities:
 
         # Create custom greyscale colormap starting from light grey
         colors = ['#D3D3D3', '#000000']  # Light grey to black
-        n_bins = 100
         cmap = LinearSegmentedColormap.from_list('light_grey_to_black', colors, N=n_bins)
 
         # Plot all heatmaps with the same scale and axes
@@ -415,7 +416,7 @@ class Capabilities:
             plt.ylim(0, 340)
             plt.show()
     
-    def plot_optimal_cost_heatmap(self, excel_path, fastener_spacing=3, bolt_diameter=0.3125):
+    def plot_optimal_cost_heatmap(self, excel_path, start_row=150, fastener_spacing=3, bolt_diameter=0.3125, n_bins=100):
         self._get_constraints(-1, 341, 69)
         self._get_region_inputs(fastener_spacing)
 
@@ -423,7 +424,7 @@ class Capabilities:
 
         # Get costs for each region (same as generate_cost_heatmaps)
         for region, (proc1, proc2, fastener_func) in self.region_inputs.items():
-            self._get_all_costs(excel_path, 150, fastener_spacing, region, proc1, proc2, 
+            self._get_all_costs(excel_path, start_row, fastener_spacing, region, proc1, proc2, 
                                 fastener_func, bolt_diameter)
 
         # Create combined optimal cost matrix and process tracking matrix
@@ -546,7 +547,6 @@ class Capabilities:
             fixed_vmin, fixed_vmax = 0, 1  # fallback
 
         colors = ['#D3D3D3', '#000000']  # Light grey to black
-        n_bins = 100
         cmap = LinearSegmentedColormap.from_list('light_grey_to_black', colors, N=n_bins)
 
         # Create the combined plot
@@ -585,7 +585,7 @@ class Capabilities:
         
         plt.xlabel('Width (in)')
         plt.ylabel('Length (in)')
-        plt.suptitle(f'Optimal Manufacturing Process Cost Comparison\nGauge: {self.gauge}, Material: {self.material}', 
+        plt.suptitle(f'Optimal Manufacturing Regions\nGauge: {self.gauge}, Material: {self.material}', 
                     fontsize=14, fontweight='bold', color='black', y=0.95)
         plt.xlim(0, 340)
         plt.ylim(0, 340)
@@ -593,7 +593,7 @@ class Capabilities:
         
         return region_stats
 
-    def plot_cost_difference_heatmap(self, excel_path, fastener_spacing=3, bolt_diameter=0.3125):
+    def plot_cost_difference_heatmap(self, excel_path, start_row=150, fastener_spacing=3, bolt_diameter=0.3125, n_bins=100):
         """
         Analyze cost differences between manufacturing processes in regions with multiple feasible options.
         Shows boundaries colored by process and displays absolute cost differences.
@@ -606,7 +606,7 @@ class Capabilities:
         self.all_costs = {}
         
         for region, (proc1, proc2, fastener_func) in self.region_inputs.items():
-            self._get_all_costs(excel_path, 150, fastener_spacing, region, proc1, proc2, 
+            self._get_all_costs(excel_path, start_row, fastener_spacing, region, proc1, proc2, 
                                 fastener_func, bolt_diameter)
 
         # Find regions with multiple feasible processes and calculate cost differences
@@ -770,7 +770,6 @@ class Capabilities:
         
         # Create custom greyscale colormap starting from light grey
         colors = ['#D3D3D3', '#000000']  # Light grey to black
-        n_bins = 100
         cmap = LinearSegmentedColormap.from_list('light_grey_to_black', colors, N=n_bins)
         
         plt.imshow(masked_differences, origin='lower', extent=[0, 340, 0, 340], aspect='auto',
@@ -799,7 +798,7 @@ class Capabilities:
         
         plt.xlabel('Width (in)')
         plt.ylabel('Length (in)')
-        plt.suptitle(f'Manufacturing Process Cost Differences\nGauge: {self.gauge}, Material: {self.material}', 
+        plt.suptitle(f'Cost Comparison of Shared Manufacturing Regions\nGauge: {self.gauge}, Material: {self.material}', 
                     fontsize=14, fontweight='bold', color='black', y=0.95)
         plt.xlim(0, 340)
         plt.ylim(0, 340)
@@ -809,7 +808,7 @@ class Capabilities:
         return region_stats
     
     def plot_cost_run_chart(self, excel_path, start_length, start_width, end_length, end_width, 
-                   direction, spacing, fastener_spacing=3, bolt_diameter=0.3125):
+                   direction, spacing, start_row=150, fastener_spacing=3, bolt_diameter=0.3125):
         """
         Generate a run chart of total costs along a specified path.
         
@@ -917,7 +916,7 @@ class Capabilities:
             point_process_map[excel_row_idx] = (point_idx, region)
         
         print(f"Prepared {len(batch_lengths)} calculations for batch processing")
-        self._write_inputs_to_excel(excel_path, 150, fastener_spacing, 
+        self._write_inputs_to_excel(excel_path, start_row, fastener_spacing, 
                                      batch_lengths, batch_widths, batch_quantities, 
                                      batch_process1s, batch_process2s, batch_material_codes, 
                                      batch_gauges, batch_fastener_counts, 

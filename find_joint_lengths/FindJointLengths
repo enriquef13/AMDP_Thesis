@@ -16,16 +16,11 @@ Sub Main()
     MessageBox.Show("Analyzing part geometry for proximity..." & vbCrLf & "This may take a moment for large assemblies.", "Progress")
     
     ' Get all component occurrences
-    Dim components As New List(Of ComponentOccurrence)
-    For Each comp As ComponentOccurrence In asmDef.Occurrences
-        If comp.Visible And Not comp.Suppressed Then
-            components.Add(comp)
-        End If
-    Next
-    
+	Dim Components As List(Of ComponentOccurrence) = GetAllLeafOccurrences(asmDef.Occurrences)
+
     ' Compare each part with every other part
-    For i As Integer = 0 To components.Count - 2
-        For j As Integer = i + 1 To components.Count - 1
+    For i As Integer = 0 To Components.Count - 2
+        For j As Integer = i + 1 To Components.Count - 1
             Try
                 Dim comp1 As ComponentOccurrence = components(i)
                 Dim comp2 As ComponentOccurrence = components(j)
@@ -168,4 +163,29 @@ Function GetComponentName(comp As ComponentOccurrence) As String
     Catch ex As Exception
         Return "Unknown_Instance"
     End Try
+End Function
+
+
+' Recursively get all leaf parts (non-assembly components)
+Function GetAllLeafOccurrences(occurrences As ComponentOccurrences) As List(Of ComponentOccurrence)
+    Dim allParts As New List(Of ComponentOccurrence)
+
+    For Each occ As ComponentOccurrence In occurrences
+        If occ.DefinitionDocumentType = DocumentTypeEnum.kAssemblyDocumentObject Then
+            ' Recurse into subassembly
+            Dim subAsmDef As AssemblyComponentDefinition = CType(occ.Definition, AssemblyComponentDefinition)
+            Dim subParts As List(Of ComponentOccurrence) = GetAllLeafOccurrences(subAsmDef.Occurrences)
+            
+            For Each subOcc As ComponentOccurrence In subParts
+                allParts.Add(subOcc)
+            Next
+        Else
+            ' Add part
+            If occ.Visible And Not occ.Suppressed Then
+                allParts.Add(occ)
+            End If
+        End If
+    Next
+
+    Return allParts
 End Function

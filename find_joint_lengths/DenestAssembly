@@ -41,5 +41,5 @@ Sub Main()
         End Try
     Next
 
-    MessageBox.Show("Flattening complete. Parts added to top level in correct positions.", "Done")
+    MessageBox.Show("Flattening complete. Parts added to top level. Run the rule again to flatten any remaining subassemblies.", "Done")
 End Sub

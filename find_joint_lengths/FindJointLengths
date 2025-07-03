@@ -56,7 +56,7 @@ Sub Main()
     Next
 
 	Try
-	    Dim csvPath As String = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(doc.FullFileName), "JointPairs_WithLengths_" & DateTime.Now.ToString("yyyyMMdd_HHmmss") & ".csv")
+	    Dim csvPath As String = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(doc.FullFileName), "JointPairs_" & DateTime.Now.ToString("yyyyMMdd_HHmmss") & ".csv")
 	    Dim csvContent As New System.Text.StringBuilder()
 	    
 	    csvContent.AppendLine("Part A,Part B,Joint Length Inches")
@@ -164,7 +164,6 @@ Function GetComponentName(comp As ComponentOccurrence) As String
         Return "Unknown_Instance"
     End Try
 End Function
-
 
 ' Recursively get all leaf parts (non-assembly components)
 Function GetAllLeafOccurrences(occurrences As ComponentOccurrences) As List(Of ComponentOccurrence)

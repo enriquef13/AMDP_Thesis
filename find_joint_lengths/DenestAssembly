@@ -1,0 +1,45 @@
+Sub Main()
+    Dim doc As AssemblyDocument = ThisApplication.ActiveDocument
+    If doc.DocumentType <> DocumentTypeEnum.kAssemblyDocumentObject Then
+        MessageBox.Show("This rule only works on assembly documents.", "Error")
+        Return
+    End If
+
+    Dim asmDef As AssemblyComponentDefinition = doc.ComponentDefinition
+    Dim toRemove As New List(Of ComponentOccurrence)
+
+    For Each occ As ComponentOccurrence In asmDef.Occurrences
+        If occ.DefinitionDocumentType = DocumentTypeEnum.kAssemblyDocumentObject Then
+            ' Make sure subassembly transform is defined
+            If Not occ.Grounded Then occ.Grounded = True
+
+            ' Promote all child parts of this subassembly to top level
+            Dim subDef As AssemblyComponentDefinition = CType(occ.Definition, AssemblyComponentDefinition)
+            For Each subOcc As ComponentOccurrence In subDef.Occurrences
+                Try
+                    ' Combine parent and child transforms properly
+					Dim combinedTransform As Matrix = subOcc.Transformation.Copy()
+					combinedTransform.TransformBy(occ.Transformation)
+					
+					' Add the actual child part to the top-level assembly
+					doc.ComponentDefinition.Occurrences.AddByComponentDefinition(subOcc.Definition, combinedTransform)
+
+                Catch ex As Exception
+                    MessageBox.Show("Failed to add " & subOcc.Name & ": " & ex.Message)
+                End Try
+            Next
+            toRemove.Add(occ)
+        End If
+    Next
+
+    ' Remove old subassemblies
+    For Each occ As ComponentOccurrence In toRemove
+        Try
+            occ.Delete()
+        Catch ex As Exception
+            MessageBox.Show("Could not remove " & occ.Name & ": " & ex.Message)
+        End Try
+    Next
+
+    MessageBox.Show("Flattening complete. Parts added to top level in correct positions.", "Done")
+End Sub

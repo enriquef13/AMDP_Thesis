@@ -7,8 +7,8 @@ Sub Main()
 	
 	
     ' Tolerance for considering parts as "touching"
-    Dim touchTolerance As Double = 0.1 ' Adjust this value as needed (in inches)
-    Dim minJointLength As Double = 0.5 ' Minimum length to consider a joint valid (in inches)
+    Dim touchTolerance As Double = 0.15 ' Adjust this value as needed (in inches)
+    Dim minJointLength As Double = 0.5  ' Minimum length to consider a joint valid (in inches)
     
 	' Dictionary to store contact pairs and contact lengths
     Dim contactLengths As New Dictionary(Of String, Double)

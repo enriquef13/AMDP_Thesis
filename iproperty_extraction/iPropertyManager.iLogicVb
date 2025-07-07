@@ -1,0 +1,2384 @@
+﻿Sub Main
+	' iLogic Program iPropertyManager v2.07 by Glen Landreth, modified by Stanley Salim
+	' Program reads user selected data file to read / change iProperties, Parameters, and General Annotation Notes in specified files
+	' Intended for manual operation, no triggers required
+
+	'Set Code Name and Version iProperties, will only be added if code saves the file
+	Dim CodeVersionProperty As String = "iPropertyManagerVersion"
+	Dim CodeVersion As Double = 2.07
+
+	Dim MinRequiredDataFileVersion As Double = 1.06
+	Dim MaxRequiredDataFileVersion As Double = 1.07
+	Dim DataFileInputHeaderRowCount As Integer = 6
+	Dim DataFileErrorHeaderRowCount As Integer = 1
+	Dim DataFileOutputHeaderRowCount As Integer = 6
+	Dim HeaderRowDifference As Integer = DataFileOutputHeaderRowCount - DataFileInputHeaderRowCount
+	Dim DataFileInputHeaderColumnCount As Integer = 3
+	Dim DataFileOutputHeaderColumnCount As Integer = 4
+	Dim HeaderColumnDifference As Integer = DataFileOutputHeaderColumnCount - DataFileInputHeaderColumnCount
+	Dim DataFileSettingsCount As Integer = 9
+
+	Dim MessageTimerProperty As String = "TimedMessageDuration"
+	Dim RunTimerEnabled As Boolean = True
+
+	' Command to consolidate all operations into a single transaction for the undo menu
+	Dim ProcessName As String = "iPropertyManager"
+	Dim ProcessManager As TransactionManager = ThisApplication.TransactionManager
+	Dim ProcessTransaction As Inventor.Transaction = ProcessManager.StartTransaction(ThisDoc.Document, ProcessName)
+
+	Dim ActiveDocument As Document = ThisApplication.ActiveDocument
+
+	Dim TemporaryDocument As PartDocument
+	TemporaryDocument = ThisApplication.Documents.Add(kPartDocumentObject, Nothing, True)
+
+	'Get the data file from the user
+	Call OnScreenMessage(TemporaryDocument, "Checking Data File")
+	Dim DataFilePath As String = GetDataFilePath
+	Dim DataFileIsUsable As Boolean = CheckDataFile(DataFilePath, MinRequiredDataFileVersion, MaxRequiredDataFileVersion)
+	If DataFileIsUsable = False Then
+		If ProcessManager.CurrentTransaction.DisplayName = ProcessName Then ProcessManager.CurrentTransaction.End
+		Call OnScreenMessage(TemporaryDocument, Nothing)
+		GoExcel.Close
+		TemporaryDocument.Close(True)
+		Exit Sub
+	End If
+
+	' Get Process Settings from Data File
+	'[ Details on Process Settings
+	Call OnScreenMessage(TemporaryDocument, "Reading Settings from Data File")
+	Dim DataFileSettings(DataFileSettingsCount) As String
+	' Index: 0 = Process Control; 1 = Save First; 2 = Suppress Messages; 3 = Default Search Folder; 4 = Open Data File when Complete
+	' 5 = Open Inventor files when complete; 6 = Make assembly; 7 = Copy Path; 8 = iLogic Code; 9 = Force Full Automation
+	DataFileSettings = GetDataFileSettings(DataFilePath, DataFileSettingsCount)
+
+	If DataFileSettings(0) = "End Process" Then
+		If ProcessManager.CurrentTransaction.DisplayName = ProcessName Then ProcessManager.CurrentTransaction.End
+		Call OnScreenMessage(TemporaryDocument, Nothing)
+		GoExcel.Close
+		TemporaryDocument.Close(True)
+		Exit Sub
+	End If
+
+	Dim SaveFilesFirst As Boolean = False
+	Dim SaveFilesTwice As Boolean = False
+	If DataFileSettings(1) <> "No" Then
+		SaveFilesFirst = True
+		If DataFileSettings(1) = "Twice" Then SaveFilesTwice = True
+	End If
+
+	Dim DisableTimedMessages As Boolean = False
+	If DataFileSettings(2) = "Yes" Then DisableTimedMessages = True
+
+	Dim SearchRoot As String = DataFileSettings(3)
+	Dim NonLocalFilePathsFound As Boolean = False
+	If UCase(Left(SearchRoot, 1)) <> "C" Then NonLocalFilePathsFound = True
+
+	Dim OpenDataFileWhenComplete As Boolean = False
+	If DataFileSettings(4) = "Yes" Then OpenDataFileWhenComplete = True
+
+	Dim OpenFilesWhenComplete As String = DataFileSettings(5)
+
+	Dim NewAssemblyWhenComplete As String = DataFileSettings(6)
+
+	Dim FileCompleteCopyPath As String = DataFileSettings(7)
+
+	Dim PreProcessCodePath As String = DataFileSettings(8)
+	Dim OpenFilesAsVisible As Boolean = False
+
+	Dim ForceFullAutomationFlag As Boolean = False
+	If DataFileSettings(9) = "Yes" Then ForceFullAutomationFlag = True
+
+	Dim DataFileSaveIncrement As Integer = 10
+	' If no save first, and no external code, safer to have large increment between data file saves
+	If String.IsNullOrEmpty(PreProcessCodePath) = True And SaveFilesFirst = False Then DataFileSaveIncrement = 100
+	']
+
+	' Get Size of Data Set & Prepare for Gathering Data
+	'[ Details on data set prep
+	Call OnScreenMessage(TemporaryDocument, "Checking Range of Data File")
+	Dim FileCount As Integer = GetRowCount(DataFilePath, "Input", DataFileInputHeaderRowCount, "A")
+	If FileCount < 1 Then
+		MessageBox.Show("No filenames found in column A of Input Sheet." & vbCrLf & _
+		"No files have been modified, process will end ", " Data File Error ")
+		If ProcessManager.CurrentTransaction.DisplayName = ProcessName Then ProcessManager.CurrentTransaction.End
+		Call OnScreenMessage(TemporaryDocument, Nothing)
+		GoExcel.Close
+		TemporaryDocument.Close(True)
+		Exit Sub
+	End If
+	Dim FirstFileRowNumber As Integer = DataFileInputHeaderRowCount + 1
+	Dim LastFileRowNumber As Integer = DataFileInputHeaderRowCount + FileCount
+
+	Dim PropertyCount As Integer = GetColumnCount(DataFilePath, "Input", DataFileInputHeaderColumnCount, DataFileInputHeaderRowCount - 2)
+	Dim SkipPropertyProcessing As Boolean = False
+	Dim ContinueProcess As MsgBoxResult
+	If PropertyCount < 1 Then
+		ContinueProcess = MessageBox.Show("No properties found in column " & GetColumnLetter(DataFileInputHeaderColumnCount + 1) & " of input sheet." & vbCrLf & vbCrLf & _
+		"Do you want to continue without property processing, and perform other operations such as file saves and assembly creation?", "Continue with no properties?", MessageBoxButtons.YesNo)
+		If ContinueProcess = vbNo Then
+			MessageBox.Show("No files have been modified, process will end", "No Properties to Process")
+			If ProcessManager.CurrentTransaction.DisplayName = ProcessName Then ProcessManager.CurrentTransaction.End
+			Call OnScreenMessage(TemporaryDocument, Nothing)
+			GoExcel.Close
+			TemporaryDocument.Close(True)
+			Exit Sub
+		Else
+			PropertyCount = 0
+			SkipPropertyProcessing = True
+		End If
+	End If
+	Dim FirstPropertyColumnNumber As Integer = DataFileInputHeaderColumnCount + 1
+	Dim LastPropertyColumnNumber As Integer = DataFileInputHeaderColumnCount + PropertyCount
+
+	' Size Data Arrays and Initialize Indices
+	Dim FoundFileList(LastFileRowNumber + 1, 8) As String 'Add 1 for safety
+	Dim SavedFileList(LastFileRowNumber + 1, 8) As String 'Add 1 for safety
+	Dim InputPropertyHeader(DataFileInputHeaderRowCount, LastPropertyColumnNumber) As String
+	' Rows: 0 = Process Control, 1 = Unused, 2 = Unused, 3 = Group, 4 = Name, 5 = Action, 6 = Format
+	Dim InputValues(LastFileRowNumber, LastPropertyColumnNumber) As String
+	' Columns: 0 = Process Control, 1 = FileName, 2 = Search Path, 3 = Assembly QPA, 4+ = Property Values
+	Dim SearchErrorCount As Integer = 0 : Dim SearchErrorFileList(LastFileRowNumber + 1) As String
+	Dim NotFoundCount As Integer = 0 : Dim NotFoundFileList(LastFileRowNumber + 1) As String
+	Dim ReadErrorCount As Integer = 0 : Dim ReadErrorFileList(LastFileRowNumber + 1) As String
+	Dim WriteErrorCount As Integer = 0 : Dim WriteErrorFileList(LastFileRowNumber + 1) As String
+	Dim CopyErrorCount As Integer = 0 : Dim CopyErrorFileList(LastFileRowNumber + 1) As String
+	Dim OpenErrorCount As Integer = 0 : Dim OpenErrorFileList(LastFileRowNumber + 1) As String
+	Dim AssemblyAddErrorCount As Integer = 0 : Dim AssemblyAddErrorFileList(LastFileRowNumber + 1) As String
+
+	Dim ColorCellsCount As Integer = (LastFileRowNumber + 1) * (LastPropertyColumnNumber + 1)
+	Dim RedOutputCount As Integer = 0 : Dim RedOutputCells(ColorCellsCount) As String
+	Dim GreenOutputCount As Integer = 0 : Dim GreenOutputCells(ColorCellsCount) As String
+	Dim YellowOutputCount As Integer = 0 : Dim YellowOutputCells(ColorCellsCount) As String
+	Dim CyanOutputCount As Integer = 0 : Dim CyanOutputCells(ColorCellsCount) As String
+	Dim ClearOutputCount As Integer = 0 : Dim ClearOutputCells(ColorCellsCount) As String
+	Dim DateOutputCount As Integer = 0 : Dim DateOutputCells(ColorCellsCount) As String
+
+	Dim ColorCodeOutput As Boolean = True
+	Dim ColorCodeInput As MsgBoxResult
+	ColorCodeInput = MessageBox.Show("Do you want to turn off color coding of the output file to improve performance on the output data?" & vbCrLf & _
+	"(Yes = Turn off Color coding, No = Color coding enabled) ", "Suppress Output Color Coding?", MessageBoxButtons.YesNo)
+	If ColorCodeInput = vbYes Then ColorCodeOutput = False
+	']
+
+	' No more user input is required, so now start process timer
+	Dim ProcessTimer As New Stopwatch()
+	ProcessTimer.Start()
+
+	'[ Create temporary document objects and other variables
+	Call OnScreenMessage(TemporaryDocument, "Preparing to process files")
+	Dim FileDocument As Document
+	Dim FileDocumentType As DocumentTypeEnum
+	Dim FileName As String
+	Dim FilePath As String
+	Dim FileInputQPA As String
+	Dim FileQPA As Integer
+	Dim FoundFullFilePath As String
+	Dim FullFilePath As String
+	Dim FileIsReadOnly As Boolean
+	Dim OutputFileMessage As String
+	Dim OutputErrorCount As String
+	Dim OutputFileName As String
+	Dim OutputFilePath As String
+	Dim ProgressMessage As String
+	Dim PropertyGroup As String
+	Dim PropertyName As String
+	Dim PropertyAction As String
+	Dim PropertyFormat As String
+	Dim InputPropertyValue As String
+	Dim PreSavePropertyValue As String
+	Dim OutputPropertyValue(2) As String ' 0 = Save Required, 1 = Output Value, 2 = Cell Fill Color
+	Dim FileSaveAfter As Boolean
+	Dim CouldNotSave As Boolean
+	Dim SaveChangedValue As Boolean
+	Dim OutputRow As Integer
+	Dim InputColumnLetter As String
+	Dim OutputColumnLetter As String
+	Dim OutputCell As String
+	Dim OutputFullFilePath As String
+	Dim ModelExtents(6) As Double ' Positions: 0 = Process Control, 1 = Max X, 2 = Max Y, 3 = Max Z, 4 = Min X, 5 = Min Y, 6 = Min Z
+	']
+
+	Dim UIManager As UserInterfaceManager = ThisApplication.UserInterfaceManager
+
+	UIManager.UserInteractionDisabled = True ' Turn off UI while processing data
+
+	'[ Store Input values in memory and write to Output File
+	If SkipPropertyProcessing = False Then
+		Call OnScreenMessage(TemporaryDocument, "Writing Output Header to Data File")
+		For i = DataFileInputHeaderRowCount - 3 To DataFileInputHeaderRowCount
+			For j = FirstPropertyColumnNumber To LastPropertyColumnNumber
+				InputColumnLetter = GetColumnLetter(j)
+				InputPropertyHeader(i, j) = GoExcel.CellValue(DataFilePath, "Input", InputColumnLetter & i)
+				OutputColumnLetter = GetColumnLetter(j + HeaderColumnDifference) 'Need to shift output columns if there are more header columns on the output sheet
+				GoExcel.CellValue(DataFilePath, "Output", OutputColumnLetter & (i + HeaderRowDifference)) = InputPropertyHeader(i, j)
+			Next
+		Next
+	End If
+	Try
+		GoExcel.Save
+	Catch
+		MessageBox.Show("Error saving datafile " & DataFilePath & vbCrLf & vbCrLf & "Check that the file is not read only, is closed, and try again", "Data File Save Error")
+		If ProcessManager.CurrentTransaction.DisplayName = ProcessName Then ProcessManager.CurrentTransaction.End
+		Call OnScreenMessage(TemporaryDocument, Nothing)
+		GoExcel.Close
+		TemporaryDocument.Close(True)
+		UIManager.UserInteractionDisabled = False
+		Exit Sub
+	End Try
+
+	Call OnScreenMessage(TemporaryDocument, "Loading input values from data file")
+	For i = FirstFileRowNumber To LastFileRowNumber
+		For j = 1 To LastPropertyColumnNumber
+			InputValues(i, j) = GoExcel.CellValue(DataFilePath, "Input", GetColumnLetter(j) & i)
+		Next
+		If InputValues(i, 1) = Nothing Then
+			' Do nothing, as default search path has already been checked
+		ElseIf UCase(Left(InputValues(i, 1), 1)) <> "C" Then
+			NonLocalFilePathsFound = True
+		End If
+	Next
+
+	If NonLocalFilePathsFound = True Then DataFileSaveIncrement = 10
+	']
+
+	' Main Loop for Processing Files
+	For i = FirstFileRowNumber To LastFileRowNumber
+		FileName = InputValues(i, 1)
+		FilePath = InputValues(i, 2)
+		FileInputQPA = InputValues(i, 3)
+		If FileInputQPA = Nothing Then
+			FileQPA = 1
+		Else
+			Try
+				FileQPA = Abs(Convert.ToInt32(FileInputQPA))
+			Catch
+				FileQPA = 1
+			End Try
+		End If
+		OutputRow = i + HeaderRowDifference
+
+		ProgressMessage = GenerateProgressMessage(i - DataFileInputHeaderRowCount - 1, FileCount, FileName, ProcessTimer.Elapsed)
+		Call OnScreenMessage(TemporaryDocument, ProgressMessage)
+
+		If FilePath = Nothing Then FilePath = SearchRoot
+		If Right(FilePath, 1) <> "\" Then FilePath = FilePath & "\" ' Ensure last character of path is \
+
+		'[ File Search and Open Details
+		Try
+			FoundFullFilePath = FindFullFilePath(FilePath, FileName, FilePath, False)
+		Catch
+			FoundFileList(i, 1) = Nothing
+			SavedFileList(i, 1) = Nothing
+			RedOutputCells(RedOutputCount) = "A" & OutputRow : RedOutputCount += 1
+			ClearOutputCells(ClearOutputCount) = "B" & OutputRow : ClearOutputCount += 1
+			SearchErrorCount += 1 : SearchErrorFileList(SearchErrorCount) = OutputFileName
+			GoExcel.CellValue(DataFilePath, "Output", "A" & OutputRow) = "File Search Error"
+			GoExcel.CellValue(DataFilePath, "Output", "B" & OutputRow) = "N/A"
+			GoExcel.CellValue(DataFilePath, "Output", "C" & OutputRow) = UCase(FileName)
+			GoExcel.CellValue(DataFilePath, "Output", "D" & OutputRow) = UCase(FilePath)
+			Call ClearExcelRow(DataFilePath, "Output", OutputRow, FirstPropertyColumnNumber + HeaderColumnDifference, LastPropertyColumnNumber + HeaderColumnDifference)
+			Continue For
+		End Try
+
+		' Try Opening File
+		Try
+			If FoundFullFilePath = Nothing Then
+				FoundFileList(i, 1) = Nothing
+				SavedFileList(i, 1) = Nothing
+				RedOutputCells(RedOutputCount) = "A" & OutputRow : RedOutputCount += 1
+				ClearOutputCells(ClearOutputCount) = "B" & OutputRow : ClearOutputCount += 1
+				NotFoundCount += 1 : NotFoundFileList(NotFoundCount) = OutputFileName
+				GoExcel.CellValue(DataFilePath, "Output", "A" & OutputRow) = "File NOT Found"
+				GoExcel.CellValue(DataFilePath, "Output", "B" & OutputRow) = "N/A"
+				GoExcel.CellValue(DataFilePath, "Output", "C" & OutputRow) = UCase(FileName)
+				GoExcel.CellValue(DataFilePath, "Output", "D" & OutputRow) = UCase(FilePath)
+				Call ClearExcelRow(DataFilePath, "Output", OutputRow, FirstPropertyColumnNumber + HeaderColumnDifference, LastPropertyColumnNumber + HeaderColumnDifference)
+				Continue For
+			Else
+				FullFilePath = FoundFullFilePath
+				FileDocument = ThisApplication.Documents.Open(FullFilePath, OpenFilesAsVisible)
+				FileDocumentType = FileDocument.DocumentType
+				If FileDocumentType = kPartDocumentObject Then
+				    Try
+				        ' Run PartAutomationEnrichment twice
+				        Dim enrichmentPath As String = ThisApplication.FileLocations.Workspace & "\CAD Support\Tools\Automation\Utilities\PartAutomationEnrichment.iLogicVb"
+				        iLogicVb.Automation.RunExternalRule(FileDocument, enrichmentPath)
+				        iLogicVb.Automation.RunExternalRule(FileDocument, enrichmentPath)
+				    Catch ex As Exception
+				        MessageBox.Show("Failed to run PartAutomationEnrichment on: " & FileDocument.DisplayName & vbCrLf & ex.Message, "iLogic Error")
+				    End Try
+				End If
+
+
+				OutputFullFilePath = FileDocument.FullFileName
+				FoundFileList(i, 1) = OutputFullFilePath
+				FoundFileList(i, 2) = FileQPA
+				SavedFileList(i, 1) = Nothing
+				SavedFileList(i, 2) = FileQPA
+				OutputFilePath = UCase(Left(OutputFullFilePath, (InStrRev(OutputFullFilePath, "\", -1, vbTextCompare))))
+				OutputFileName = UCase(Mid(OutputFullFilePath, OutputFilePath.Length + 1))
+				OutputFileMessage = "File Found"
+				ClearOutputCells(ClearOutputCount) = "A" & OutputRow : ClearOutputCount += 1
+				If FileDocumentType = kPartDocumentObject Or FileDocumentType = kAssemblyDocumentObject Then
+					OutputErrorCount = Nothing
+				Else
+					OutputErrorCount = "N/A"
+				End If
+			End If
+		Catch
+			FoundFileList(i, 1) = Nothing
+			SavedFileList(i, 1) = Nothing
+			RedOutputCells(RedOutputCount) = "A" & OutputRow : RedOutputCount += 1
+			ClearOutputCells(ClearOutputCount) = "B" & OutputRow : ClearOutputCount += 1
+			ReadErrorCount += 1 : ReadErrorFileList(ReadErrorCount) = OutputFileName
+			GoExcel.CellValue(DataFilePath, "Output", "A" & OutputRow) = "File Read Error"
+			GoExcel.CellValue(DataFilePath, "Output", "B" & OutputRow) = "N/A"
+			GoExcel.CellValue(DataFilePath, "Output", "C" & OutputRow) = UCase(FileName)
+			GoExcel.CellValue(DataFilePath, "Output", "D" & OutputRow) = UCase(FilePath)
+			Call ClearExcelRow(DataFilePath, "Output", OutputRow, FirstPropertyColumnNumber + HeaderColumnDifference, LastPropertyColumnNumber + HeaderColumnDifference)
+			Continue For
+		End Try
+
+		Try ' Had recurring fatal errors when reading from documents on network drives, so use try catch to detect early read errors
+			FileIsReadOnly = IsFileReadOnly(FullFilePath)
+			If FileIsReadOnly Then
+				YellowOutputCells(YellowOutputCount) = "A" & OutputRow : YellowOutputCount += 1
+			End If
+			ModelExtents = GetModelExtents(FileDocument)
+			For j = 1 To 6
+				FoundFileList(i, j + 2) = ModelExtents(j).ToString
+				SavedFileList(i, j + 2) = ModelExtents(j).ToString
+			Next
+		Catch
+			FoundFileList(i, 1) = Nothing
+			RedOutputCells(RedOutputCount) = "A" & OutputRow : RedOutputCount += 1
+			ClearOutputCells(ClearOutputCount) = "B" & OutputRow : ClearOutputCount += 1
+			ReadErrorCount += 1 : ReadErrorFileList(ReadErrorCount) = OutputFileName
+			GoExcel.CellValue(DataFilePath, "Output", "A" & OutputRow) = "File Read Error"
+			GoExcel.CellValue(DataFilePath, "Output", "B" & OutputRow) = "N/A"
+			GoExcel.CellValue(DataFilePath, "Output", "C" & OutputRow) = UCase(FileName)
+			GoExcel.CellValue(DataFilePath, "Output", "D" & OutputRow) = UCase(FilePath)
+			Call ClearExcelRow(DataFilePath, "Output", OutputRow, FirstPropertyColumnNumber + HeaderColumnDifference, LastPropertyColumnNumber + HeaderColumnDifference)
+			Try
+				FileDocument.Close
+			Catch
+				' Do nothing since file is not already open
+			End Try
+			Continue For
+		End Try
+		']
+
+		' Pre-Process Found Files
+		'[ Pre-Process Details
+		If SaveFilesFirst Then
+			If FileIsReadOnly Then
+				OutputFileMessage = OutputFileMessage & " but is read only, cannot save"
+				WriteErrorCount += 1 : WriteErrorFileList(WriteErrorCount) = OutputFileName
+			Else
+				Call ProcessAndSaveFile(FileDocument, CodeVersionProperty, CodeVersion, ForceFullAutomationFlag, DisableTimedMessages, SaveFilesTwice)
+				SavedFileList(i, 1) = OutputFullFilePath
+				OutputFileMessage = OutputFileMessage & " - Saved before checking"
+				GreenOutputCells(GreenOutputCount) = "A" & OutputRow : GreenOutputCount += 1
+			End If
+		End If
+		If String.IsNullOrEmpty(PreProcessCodePath) = False Then
+			If FileIsReadOnly = True Then
+				OutputFileMessage = OutputFileMessage & " file is read only, cannot run specified external code"
+				WriteErrorCount += 1 : WriteErrorFileList(WriteErrorCount) = OutputFileName
+			Else
+				If DisableTimedMessages Then Call ChangeNumberCustomProperty(FileDocument, MessageTimerProperty, 999, True)
+				UIManager.UserInteractionDisabled = False ' Turn on UI while executing external code in case that code needs user interaction
+				iLogicVb.Automation.RunExternalRule(FileDocument, PreProcessCodePath)
+				UIManager.UserInteractionDisabled = True ' Turn off UI after executing external code
+				If FileDocument.Dirty = True Then
+					If FileDocumentType = kPartDocumentObject Or FileDocumentType = kAssemblyDocumentObject Then
+						FileDocument.Rebuild2(True)
+					Else
+						FileDocument.Update2(True)
+					End If
+					Call ProcessAndSaveFile(FileDocument, CodeVersionProperty, CodeVersion, ForceFullAutomationFlag, DisableTimedMessages, False)
+					SavedFileList(i, 1) = OutputFullFilePath
+				End If
+			End If
+		End If
+		']
+
+		FileSaveAfter = False ' Reset save after flag before checking properties on each file
+		CouldNotSave = False ' Reset could not save flag before checking properties on each file
+
+		If SkipPropertyProcessing = False Then
+			For j = FirstPropertyColumnNumber To LastPropertyColumnNumber
+				'[ Process Property Information for Each File
+				OutputColumnLetter = GetColumnLetter(j + HeaderColumnDifference) 'Need to shift output columns if there are more header columns on the output sheet
+				OutputCell = OutputColumnLetter & OutputRow
+
+				PropertyGroup = InputPropertyHeader(DataFileInputHeaderRowCount - 3, j)
+				PropertyName = InputPropertyHeader(DataFileInputHeaderRowCount - 2, j)
+				PropertyAction = InputPropertyHeader(DataFileInputHeaderRowCount - 1, j)
+				PropertyFormat = InputPropertyHeader(DataFileInputHeaderRowCount, j)
+				InputPropertyValue = InputValues(i, j)
+
+				If PropertyFormat = "Date" And InputPropertyValue <> Nothing Then
+					Try ' Catch for invalid date entries
+						' This converts dates from serial dates (used by Excel) to text formatted dates
+						InputPropertyValue = DateTime.FromOADate(InputPropertyValue).ToShortDateString
+					Catch
+						' Do Nothing, if the value couldn't be converted, let downstream error handling catch and report it
+					End Try
+				End If
+
+				OutputPropertyValue(0) = "NO" ' Default to not saving the file
+				OutputPropertyValue(1) = Nothing ' Default to no value in the cell
+				OutputPropertyValue(2) = "CLEAR" ' Default to having no cell fill color
+
+				' Process values for each property
+				If PropertyGroup = "Physical" Then
+					OutputPropertyValue = PhysicalPropertyOutput(FileDocument, PropertyName, PropertyAction, InputPropertyValue)
+				ElseIf PropertyGroup = "Note" Then
+					OutputPropertyValue = ModelNoteProcessing(FileDocument, PropertyName, PropertyAction, InputPropertyValue, Not FileIsReadOnly, FileIsReadOnly)
+				ElseIf PropertyGroup = "Parameter" Then
+					OutputPropertyValue = ParameterProcessing(FileDocument, PropertyName, PropertyAction, InputPropertyValue, Not FileIsReadOnly, FileIsReadOnly)
+				ElseIf PropertyGroup = "Summary" Or PropertyGroup = "Project" Or PropertyGroup = "Status" Then
+					OutputPropertyValue = PropertyValueProcessing(FileDocument, PropertyName, PropertyAction, PropertyFormat, InputPropertyValue, Not FileIsReadOnly, FileIsReadOnly)
+				ElseIf PropertyGroup = "Custom" Then
+					OutputPropertyValue = CustomPropertyProcessing(FileDocument, PropertyName, PropertyAction, PropertyFormat, InputPropertyValue, Not FileIsReadOnly, FileIsReadOnly)
+				Else
+					OutputPropertyValue(1) = "Error-Invalid data category"
+					OutputPropertyValue(2) = "RED"
+				End If
+				If OutputPropertyValue(0) = "YES" Then
+					If FileIsReadOnly = True Then
+						CouldNotSave = True
+					Else
+						FileSaveAfter = True
+					End If
+				End If
+				If OutputPropertyValue(2) = "CLEAR" Then
+					ClearOutputCells(ClearOutputCount) = OutputCell : ClearOutputCount += 1
+				ElseIf OutputPropertyValue(2) = "RED" Then
+					RedOutputCells(RedOutputCount) = OutputCell : RedOutputCount += 1
+				ElseIf OutputPropertyValue(2) = "GREEN" Then
+					GreenOutputCells(GreenOutputCount) = OutputCell : GreenOutputCount += 1
+				ElseIf OutputPropertyValue(2) = "YELLOW" Then
+					YellowOutputCells(YellowOutputCount) = OutputCell : YellowOutputCount += 1
+				ElseIf OutputPropertyValue(2) = "CYAN" Then
+					CyanOutputCells(CyanOutputCount) = OutputCell : CyanOutputCount += 1
+				End If
+
+				If PropertyFormat = "Double"
+					Try
+						GoExcel.CellValue(DataFilePath, "Output", OutputCell) = Convert.ToDouble(OutputPropertyValue(1))
+					Catch
+						GoExcel.CellValue(DataFilePath, "Output", OutputCell) = OutputPropertyValue(1)
+					End Try
+				ElseIf PropertyFormat = "Integer" Then
+					Try
+						GoExcel.CellValue(DataFilePath, "Output", OutputCell) = Convert.ToInt32(OutputPropertyValue(1))
+					Catch
+						GoExcel.CellValue(DataFilePath, "Output", OutputCell) = OutputPropertyValue(1)
+					End Try
+					'			ElseIf PropertyFormat = "Date" Then
+					'				Try
+					'					GoExcel.CellValue(DataFilePath, "Output", OutputCell) = Date.Parse(OutputPropertyValue(1))
+					'					DateOutputCells(DateOutputCount) = "A" & OutputRow : DateOutputCount += 1
+					'				Catch
+					'					GoExcel.CellValue(DataFilePath, "Output", OutputCell) = OutputPropertyValue(1)
+					'				End Try
+				Else
+					GoExcel.CellValue(DataFilePath, "Output", OutputCell) = OutputPropertyValue(1)
+				End If
+				']
+			Next
+
+			If CouldNotSave = True And SaveFilesFirst = False And String.IsNullOrEmpty(PreProcessCodePath) = False Then
+				OutputFileMessage = OutputFileMessage & " but read only, cannot save"
+				WriteErrorCount += 1 : WriteErrorFileList(WriteErrorCount) = OutputFileName
+			End If
+
+			If FileSaveAfter = True Then
+				Call ProcessAndSaveFile(FileDocument, CodeVersionProperty, CodeVersion, ForceFullAutomationFlag, DisableTimedMessages, False)
+				SavedFileList(i, 1) = OutputFullFilePath
+				OutputFileMessage = OutputFileMessage & " and saved after updates"
+				GreenOutputCells(GreenOutputCount) = "A" & OutputRow : GreenOutputCount += 1
+
+				For j = FirstPropertyColumnNumber To LastPropertyColumnNumber
+					'[ Check for updated values after final save
+					OutputColumnLetter = GetColumnLetter(j + HeaderColumnDifference) 'Need to shift output columns if there are more header columns on the output sheet
+					OutputCell = OutputColumnLetter & OutputRow
+					PreSavePropertyValue = GoExcel.CellValue(DataFilePath, "Output", OutputCell)
+
+					If Left(PreSavePropertyValue, 6) = "Error-" Or Left(PreSavePropertyValue, 8) = "Warning-" Then
+						Continue For
+					End If
+
+					PropertyGroup = InputPropertyHeader(DataFileInputHeaderRowCount - 3, j)
+					PropertyName = InputPropertyHeader(DataFileInputHeaderRowCount - 2, j)
+					PropertyAction = InputPropertyHeader(DataFileInputHeaderRowCount - 1, j)
+					PropertyFormat = InputPropertyHeader(DataFileInputHeaderRowCount, j)
+
+					If PropertyGroup = "Physical" Then
+						PropertyAction = "Get Value"
+						OutputPropertyValue = PhysicalPropertyOutput(FileDocument, PropertyName, PropertyAction, Nothing)
+					ElseIf PropertyGroup = "Note" Then
+						If PropertyAction = "Delete Note" Then
+							Continue For
+						Else
+							PropertyAction = "Get Note Text"
+							OutputPropertyValue = ModelNoteProcessing(FileDocument, PropertyName, PropertyAction, Nothing, False, FileIsReadOnly)
+						End If
+					ElseIf PropertyGroup = "Parameter" Then
+						If PropertyAction = "Delete Unused" Or PropertyAction = "Change Name" Then
+							Continue For
+						Else
+							OutputPropertyValue = ParameterProcessing(FileDocument, PropertyName, PropertyAction, Nothing, False, FileIsReadOnly)
+						End If
+					ElseIf PropertyGroup = "Summary" Or PropertyGroup = "Project" Or PropertyGroup = "Status" Then
+						PropertyAction = "Get / Change Value"
+						OutputPropertyValue = PropertyValueProcessing(FileDocument, PropertyName, PropertyAction, PropertyFormat, Nothing, False, FileIsReadOnly)
+					ElseIf PropertyGroup = "Custom" Then
+						If PropertyAction = "Delete Property" Or PropertyAction = "Change Name" Then
+							Continue For
+						Else
+							PropertyAction = "Get / Change Value"
+							OutputPropertyValue = PropertyValueProcessing(FileDocument, PropertyName, PropertyAction, PropertyFormat, Nothing, False, FileIsReadOnly)
+						End If
+					End If
+
+					If PreSavePropertyValue <> OutputPropertyValue(1) Then
+						GoExcel.CellValue(DataFilePath, "Output", OutputCell) = OutputPropertyValue(1) & "-Changed By Final Save"
+						CyanOutputCells(CyanOutputCount) = OutputCell : CyanOutputCount += 1
+					End If
+					']
+				Next
+			End If
+		End If
+
+		'[ Write overall file properties
+		If OutputErrorCount = Nothing Then
+			Try
+				OutputErrorCount = CheckModelForFeatureErrors(FileDocument)
+			Catch
+				OutputErrorCount = "N/A"
+			End Try
+		End If
+
+		FileDocument.Close
+
+		GoExcel.CellValue(DataFilePath, "Output", "A" & OutputRow) = OutputFileMessage
+		GoExcel.CellValue(DataFilePath, "Output", "B" & OutputRow) = OutputErrorCount
+		If OutputErrorCount = "None" Then
+			GreenOutputCells(GreenOutputCount) = "B" & OutputRow
+			GreenOutputCount += 1
+		ElseIf OutputErrorCount = "N/A" Then
+			ClearOutputCells(ClearOutputCount) = "B" & OutputRow
+			ClearOutputCount += 1
+		Else
+			RedOutputCells(RedOutputCount) = "B" & OutputRow
+			RedOutputCount += 1
+		End If
+		GoExcel.CellValue(DataFilePath, "Output", "C" & OutputRow) = OutputFileName
+		GoExcel.CellValue(DataFilePath, "Output", "D" & OutputRow) = OutputFilePath
+		']
+
+		If i Mod DataFileSaveIncrement = 0 Then ' Save every DataFileSaveIncrement rows to minimize data loss if the process crashes
+			Call OnScreenMessage(TemporaryDocument, "Saving Progress")
+			GoExcel.Save
+		End If
+
+	Next
+
+	Call OnScreenMessage(TemporaryDocument, "File processing complete, saving results to data file")
+	GoExcel.Save ' Save the data file to output
+	GoExcel.Close ' Close the data file to get it out of memory and prevent clashes with the opening the file to change cell colors
+
+	If DateOutputCount > 0 Then
+		Call OnScreenMessage(TemporaryDocument, "Applying Date Formats to Data File")
+		Call ExcelSetDateFormat(DataFilePath, "Output", DateOutputCells)
+	End If
+
+	If ColorCodeOutput Then
+		'[Update Cell Colors
+		' Do this after closing the File For data updates, As having the data File open And close during the File Loop was causing crashes
+		If ClearOutputCount > 0 Then
+			Call OnScreenMessage(TemporaryDocument, "Removing Existing Color Codes from Data File")
+			Call ExcelSetCellColors(DataFilePath, "Output", ClearOutputCells, -4142)
+		End If
+		If GreenOutputCount > 0 Then
+			Call OnScreenMessage(TemporaryDocument, "Adding Green Color Codes to Data File")
+			Call ExcelSetCellColors(DataFilePath, "Output", GreenOutputCells, 4)
+		End If
+		If YellowOutputCount > 0 Then
+			Call OnScreenMessage(TemporaryDocument, "Adding Yellow Color Codes to Data File")
+			Call ExcelSetCellColors(DataFilePath, "Output", YellowOutputCells, 6)
+		End If
+		If RedOutputCount > 0 Then
+			Call OnScreenMessage(TemporaryDocument, "Adding Red Color Codes to Data File")
+			Call ExcelSetCellColors(DataFilePath, "Output", RedOutputCells, 3)
+		End If
+		If CyanOutputCount > 0 Then
+			Call OnScreenMessage(TemporaryDocument, "Adding Cyan Color Codes to Data File")
+			Call ExcelSetCellColors(DataFilePath, "Output", CyanOutputCells, 8)
+		End If
+		']
+	End If
+
+	If FileCompleteCopyPath <> Nothing Then
+		Call OnScreenMessage(TemporaryDocument, "Copying all found files to destination " & vbCrLf & FileCompleteCopyPath)
+		CopyErrorFileList = CopyProcessedFiles(FoundFileList, FileCompleteCopyPath, FirstFileRowNumber, LastFileRowNumber)
+		CopyErrorCount = Convert.ToInt32(CopyErrorFileList(0))
+	End If
+
+	Call OnScreenMessage(TemporaryDocument, "Outputting Error Lists")
+	If SearchErrorCount > 0 Then Call WriteListToExcel(DataFilePath, "Errors", "A", DataFileErrorHeaderRowCount + 1, SearchErrorCount, SearchErrorFileList)
+	If NotFoundCount > 0 Then Call WriteListToExcel(DataFilePath, "Errors", "B", DataFileErrorHeaderRowCount + 1, NotFoundCount, NotFoundFileList)
+	If ReadErrorCount > 0 Then Call WriteListToExcel(DataFilePath, "Errors", "C", DataFileErrorHeaderRowCount + 1, ReadErrorCount, ReadErrorFileList)
+	If WriteErrorCount > 0 Then Call WriteListToExcel(DataFilePath, "Errors", "D", DataFileErrorHeaderRowCount + 1, WriteErrorCount, WriteErrorFileList)
+	If CopyErrorCount > 0 Then Call WriteListToExcel(DataFilePath, "Errors", "E", DataFileErrorHeaderRowCount + 1, CopyErrorCount, CopyErrorFileList)
+
+	If OpenFilesWhenComplete <> "None" Then
+		Call OnScreenMessage(TemporaryDocument, "Opening Selected Files")
+		OpenErrorFileList = OpenProcessedFiles(OpenFilesWhenComplete, FoundFileList, FirstFileRowNumber, LastFileRowNumber)
+		OpenErrorCount = Convert.ToInt32(OpenErrorFileList(0))
+		If OpenErrorCount > 0 Then Call WriteListToExcel(DataFilePath, "Errors", "F", DataFileErrorHeaderRowCount + 1, OpenErrorCount, OpenErrorFileList)
+	End If
+
+	TemporaryDocument.Activate
+
+	If NewAssemblyWhenComplete = "All" Then
+		Call OnScreenMessage(TemporaryDocument, "Creating Assembly with all found files")
+		AssemblyAddErrorFileList = MakeAssembly(FoundFileList, SearchRoot, FirstFileRowNumber, LastFileRowNumber)
+		AssemblyAddErrorCount = Convert.ToInt32(AssemblyAddErrorFileList(0))
+		If AssemblyAddErrorCount > 0 Then Call WriteListToExcel(DataFilePath, "Errors", "G", DataFileErrorHeaderRowCount + 1, AssemblyAddErrorCount, AssemblyAddErrorFileList)
+	ElseIf NewAssemblyWhenComplete = "Saved Only" Then
+		Call OnScreenMessage(TemporaryDocument, "Creating Assembly with all files saved by the process")
+		AssemblyAddErrorFileList = MakeAssembly(SavedFileList, SearchRoot, FirstFileRowNumber, LastFileRowNumber)
+		AssemblyAddErrorCount = Convert.ToInt32(AssemblyAddErrorFileList(0))
+		If AssemblyAddErrorCount > 0 Then Call WriteListToExcel(DataFilePath, "Errors", "G", DataFileErrorHeaderRowCount + 1, AssemblyAddErrorCount, AssemblyAddErrorFileList)
+	End If
+
+	TemporaryDocument.Activate
+
+	Dim AllProcessesEnded As Boolean = False
+	Do While AllProcessesEnded = False
+		Try
+			ProcessManager.CurrentTransaction.End
+		Catch
+			AllProcessesEnded = True
+		End Try
+	Loop
+
+	Call OnScreenMessage(TemporaryDocument, Nothing)
+
+	UIManager.UserInteractionDisabled = False ' Turn UI back on when done processing data
+
+	TemporaryDocument.Close(True)
+
+	ActiveDocument.Activate
+
+	' Open data file if the option was selected
+	If OpenDataFileWhenComplete Then
+		Call OpenExcelFile(DataFilePath)
+	End If
+
+	ProcessTimer.Stop()
+	Dim ElapsedTime As TimeSpan = ProcessTimer.Elapsed
+	Dim DisplayTime As String = String.Format("{0:00}:{1:00}:{2:00}.{3:00}", ElapsedTime.Hours, ElapsedTime.Minutes, ElapsedTime.Seconds, ElapsedTime.Milliseconds / 10)
+	MessageBox.Show("iPropertyManager Total Run Time " & DisplayTime, "Process Complete")
+
+End Sub
+
+Function ParameterProcessing(TargetDocument As Document, ParameterName As String, ParameterProperty As String, InputValue As String, AllowFileChanges As Boolean, FileIsReadOnly As Boolean) As String()
+	Dim Result(2) As String
+	Result(0) = "NO" ' Default to not saving the file
+	Result(1) = Nothing ' Default to no value in the cell
+	Result(2) = "CLEAR" ' Default to having no cell fill color
+
+	Dim TargetDocumentType As DocumentTypeEnum = TargetDocument.DocumentType
+	Dim TargetParameters As Parameters
+	Dim TargetParameter As Inventor.Parameter
+	Dim TemporaryParameter As Inventor.Parameter
+	Dim TemporaryString As String
+	Dim TargetParameterType As ParameterTypeEnum
+
+	If TargetDocumentType = kPartDocumentObject Or TargetDocumentType = kAssemblyDocumentObject Then
+		TargetParameters = TargetDocument.ComponentDefinition.Parameters
+		Try
+			TargetParameter = TargetParameters.Item(ParameterName)
+			TargetParameterType = TargetParameter.ParameterType
+		Catch
+			Result(1) = "Error-Parameter not found"
+			Result(2) = "RED"
+			Return Result
+		End Try
+	Else
+		'Drawings and Presentations not supported since they don't have parameters
+		Result(1) = "Warning-No parameters in this file type"
+		Result(2) = "YELLOW"
+		Return Result
+	End If
+
+	If ParameterProperty = "Delete Unused" Then
+		If FileIsReadOnly Then
+			Result(1) = "Error-File is Read Only"
+			Result(2) = "RED"
+		ElseIf TargetParameter.InUse = False Then
+			Try
+				TargetParameter.Delete
+				Result(0) = "YES"
+				Result(1) = "Parameter successfully deleted"
+				Result(2) = "GREEN"
+			Catch
+				Result(1) = "Error-Parameter deletion failed"
+				Result(2) = "RED"
+			End Try
+		Else
+			Result(1) = "Error-Parameter is in use"
+			Result(2) = "RED"
+		End If
+	ElseIf ParameterProperty = "Change Name" Then
+		If InputValue = Nothing Then
+			Result(1) = "Error-No new name provided"
+			Result(2) = "RED"
+			Return Result
+		End If
+		Try
+			TemporaryParameter = TargetParameters.Item(InputValue)
+			Result(1) = "Error-New parameter mame already exists"
+			Result(2) = "RED"
+		Catch
+			If FileIsReadOnly Then
+				Result(1) = "Error-File is Read Only"
+				Result(2) = "RED"
+				Return Result
+			End If
+			Try
+				TargetParameter.Name = InputValue
+				Result(0) = "YES"
+				Result(1) = "Parameter rename successful"
+				Result(2) = "GREEN"
+			Catch
+				Result(1) = "Error-Parameter rename failed"
+				Result(2) = "RED"
+			End Try
+		End Try
+	ElseIf ParameterProperty = "Get Value" Then
+		Result(1) = TargetParameter.Value.ToString & " " & TargetParameter.Units
+		If InputValue = Nothing Then
+			Result(1) = TargetParameter.Value.ToString & " " & TargetParameter.Units
+		Else
+			Result(1) = "Error-Parameter Value cannot be changed directly, change the parameter expression to modify the value. Current value = " & TargetParameter.Value.ToString & " " & TargetParameter.Units
+			Result(2) = "RED"
+		End If
+	ElseIf ParameterProperty = "Get / Change Comment" Then
+		If InputValue = Nothing Then
+			Result(1) = TargetParameter.Comment
+		ElseIf TargetParameter.Comment = InputValue Then
+			Result(1) = TargetParameter.Comment
+			Result(2) = "YELLOW"
+		ElseIf FileIsReadOnly Then
+			Try
+				If TargetParameter.Comment = Nothing Then
+					TemporaryString = "No existing comment"
+				Else
+					TemporaryString = TargetParameter.Comment
+				End If
+			Catch
+				TemporaryString = "Error getting existing comment value"
+			End Try
+			Result(1) = "Error-File is Read Only. Existing Value: " & TemporaryString
+			Result(2) = "RED"
+		ElseIf AllowFileChanges = False Then
+			Result(1) = TargetParameter.Comment
+		Else
+			Try
+				TargetParameter.Comment = InputValue
+				Result(0) = "YES"
+				Result(1) = TargetParameter.Comment
+				Result(2) = "GREEN"
+			Catch
+				Result(1) = "Error-Parameter comment change failed"
+				Result(2) = "RED"
+			End Try
+		End If
+	ElseIf ParameterProperty = "Get / Change Expression" Then
+		If InputValue = Nothing Then
+			Result(1) = TargetParameter.Expression
+		ElseIf TargetParameter.Expression = InputValue Then
+			Result(1) = TargetParameter.Expression
+			Result(2) = "YELLOW"
+		ElseIf FileIsReadOnly Then
+			Try
+				If TargetParameter.Expression = Nothing Then
+					TemporaryString = "No current expression"
+				Else
+					TemporaryString = TargetParameter.Expression
+				End If
+			Catch
+				TemporaryString = "Error getting existing expression value"
+			End Try
+			Result(1) = "Error-File is Read Only. Existing Value: " & TemporaryString
+			Result(2) = "RED"
+		ElseIf AllowFileChanges = False Then
+			Result(1) = TargetParameter.Expression
+		Else
+			Try
+				TargetParameter.Expression = InputValue
+				Result(0) = "YES"
+				Result(1) = TargetParameter.Expression
+				Result(2) = "GREEN"
+			Catch
+				Result(1) = "Error-Parameter expression change failed"
+				Result(2) = "RED"
+			End Try
+		End If
+	Else
+		Result(1) = "Error-Invalid action for parameters"
+		Result(2) = "RED"
+	End If
+
+	Return Result
+
+End Function
+
+Function CustomPropertyProcessing(TargetDocument As Document, PropertyName As String, PropertyAction As String, PropertyFormat As String, InputPropertyValue As String, AllowFileChanges As Boolean, FileIsReadOnly As Boolean) As String()
+	Dim Result(2) As String
+	Result(0) = "NO" ' Default to not saving the file
+	Result(1) = Nothing ' Default to no value in the cell
+	Result(2) = "CLEAR" ' Default to having no cell fill color
+
+	Dim TemporaryBoolean As Boolean = Nothing
+	Dim TemporaryInteger As Integer = Nothing
+	Dim TemporaryDouble As Double = Nothing
+	Dim TemporaryDate As Date = Nothing
+	Dim TemporaryString As String = Nothing
+
+	Dim TargetProperty As Inventor.Property = GetExistingProperty(TargetDocument, PropertyName)
+	Dim NewProperty As Inventor.Property
+	Dim TargetPropertyAlreadyExists As Boolean
+	Dim TargetPropertyIsExportedParameter As Boolean = False
+	Try
+		TemporaryString = TargetProperty.Name
+		TargetPropertyAlreadyExists = True
+		TargetPropertyIsExportedParameter = IsPropertyFromExportedParameter(TargetDocument, PropertyName)
+	Catch
+		TargetPropertyAlreadyExists = False
+	End Try
+
+	If PropertyAction = "Delete Property" Then
+		'[ Delete Property
+		If TargetPropertyAlreadyExists = False Then
+			Result(1) = "Error-Property Did Not Exist"
+			Result(2) = "RED"
+		ElseIf TargetPropertyIsExportedParameter = True Then
+			Result(1) = "Error-Property is exported parameter, manually remove export selection to delete iProperty"
+			Result(2) = "RED"
+		ElseIf FileIsReadOnly Then
+			Result(1) = "Error-File is Read Only"
+			Result(2) = "RED"
+		Else
+			Try
+				TargetProperty.Delete
+				Result(0) = "YES"
+				Result(1) = "Property Deleted"
+				Result(2) = "GREEN"
+			Catch
+				Result(1) = "Error-Property Deletion Failed"
+				Result(2) = "RED"
+			End Try
+		End If
+		']
+		Return Result
+	End If
+
+	If PropertyAction = "Change Name" Then
+		'[ Change Custom Property names by creating a new property and deleting the existing one
+		If TargetPropertyIsExportedParameter = True Then
+			Result(1) = "Error-Property is exported parameter, change parameter name to instead of property name"
+			Result(2) = "RED"
+			Return Result
+		ElseIf TargetPropertyAlreadyExists = False Then
+			Result(1) = "Error-Original Property Name Did Not Exist"
+			Result(2) = "RED"
+			Return Result
+		ElseIf FileIsReadOnly Then
+			Result(1) = "Error-File is Read Only"
+			Result(2) = "RED"
+			Return Result
+		End If
+		NewProperty = GetExistingProperty(TargetDocument, InputPropertyValue)
+		Try
+			TemporaryString = NewProperty.Name
+			Result(1) = "Error-New Property Name Already Exists"
+			Result(2) = "RED"
+			Return Result
+		Catch
+		End Try
+		If PropertyFormat = "Boolean" Then
+			Try
+				TemporaryBoolean = TargetProperty.Value
+			Catch
+				Result(1) = "Error-Original Property is not Yes/No"
+				Result(2) = "RED"
+				Return Result
+			End Try
+			Call ChangeBooleanCustomProperty(TargetDocument, InputPropertyValue, TemporaryBoolean, True)
+		ElseIf PropertyFormat = "Integer" Then
+			Try
+				TemporaryInteger = TargetProperty.Value
+			Catch
+				Result(1) = "Error-Original Property is not a number"
+				Result(2) = "RED"
+				Return Result
+			End Try
+			Call ChangeNumberCustomProperty(TargetDocument, InputPropertyValue, TemporaryInteger, True)
+		ElseIf PropertyFormat = "Double" Then
+			Try
+				TemporaryDouble = TargetProperty.Value
+			Catch
+				Result(1) = "Error-Original Property is not a number"
+				Result(2) = "RED"
+				Return Result
+			End Try
+			Call ChangeNumberCustomProperty(TargetDocument, InputPropertyValue, TemporaryDouble, True)
+		ElseIf PropertyFormat = "Date" Then
+			Try
+				TemporaryDate = TargetProperty.Value
+			Catch
+				Result(1) = "Error-Original Property is not a date"
+				Result(2) = "RED"
+				Return Result
+			End Try
+			Call ChangeDateCustomProperty(TargetDocument, InputPropertyValue, TemporaryDate, True)
+		Else ' Everything else should be a text string
+			Try
+				TemporaryString = TargetProperty.Value
+			Catch
+				Result(1) = "Error-Original Property is not text"
+				Result(2) = "RED"
+				Return Result
+			End Try
+			Call ChangeTextCustomProperty(TargetDocument, InputPropertyValue, TemporaryString, True)
+		End If
+		Result(0) = "YES"
+		Result(1) = "Property Renamed Successfully"
+		Result(2) = "GREEN"
+		Try
+			TargetProperty.Delete ' Delete the old property now it is not needed anymore
+		Catch
+			Result(1) = "Error-New property name created, but original could not be removed"
+			Result(2) = "RED"
+		End Try
+		']
+		Return Result
+	End If
+
+	If PropertyAction = "Get / Change Value" Then
+		If TargetPropertyAlreadyExists = False Then
+			If InputPropertyValue = Nothing Then
+				Result(1) = "Error-Property not found"
+				Result(2) = "RED"
+				Return Result
+			ElseIf AllowFileChanges = True Then
+				If PropertyFormat = "Boolean" Then
+					Call ChangeBooleanCustomProperty(TargetDocument, PropertyName, False, True)
+				ElseIf PropertyFormat = "Integer" Or PropertyFormat = "Double" Then
+					Call ChangeNumberCustomProperty(TargetDocument, PropertyName, 0, True)
+				ElseIf PropertyFormat = "Date" Then
+					Call ChangeDateCustomProperty(TargetDocument, PropertyName, Now, True)
+				Else ' Treat everything else like a text string, as dates have already been converted to strings when reading input
+					Call ChangeTextCustomProperty(TargetDocument, PropertyName, "_", True) ' Must use a non-nothing value or the property will not be created
+				End If
+			End If
+		ElseIf TargetPropertyIsExportedParameter = True Then
+			Result(1) = "Error-Property is exported parameter, change parameter expression instead of property value"
+			Result(2) = "RED"
+			Return Result
+		End If
+		Result = PropertyValueProcessing(TargetDocument, PropertyName, PropertyAction, PropertyFormat, InputPropertyValue, AllowFileChanges, FileIsReadOnly)
+		' Catches the possible cases where newly added properties have the same values as the blank property created a few lines above
+		If TargetPropertyAlreadyExists = False And Result(2) = "CLEAR" Then
+			Result(0) = "YES"
+			Result(2) = "GREEN"
+		End If
+	Else
+		Result(1) = "Error-Invalid Action for this Property Type"
+		Result(2) = "RED"
+	End If
+
+	Return Result
+End Function
+
+Function IsPropertyFromExportedParameter(TargetDocument As Document, PropertyName As String) As Boolean
+	Dim Result As Boolean
+	Dim ParameterNameExists As Boolean = False
+	Dim TargetDocumentType As DocumentTypeEnum = TargetDocument.DocumentType
+
+	If TargetDocumentType <> kPartDocumentObject And TargetDocumentType <> kAssemblyDocumentObject Then
+		Result = False
+		Return Result
+	End If
+
+	Dim TargetParameters As Parameters = TargetDocument.ComponentDefinition.Parameters
+	Try
+		Result = TargetParameters.Item(PropertyName).ExposedAsProperty
+	Catch
+		Result = False
+	End Try
+
+	Return Result
+
+End Function
+
+Function PropertyValueProcessing(TargetDocument As Document, PropertyName As String, PropertyAction As String, PropertyFormat As String, InputPropertyValue As String, AllowFileChanges As Boolean, FileIsReadOnly As Boolean) As String()
+	Dim Result(2) As String
+	Result(0) = "NO" ' Default to not saving the file
+	Result(1) = Nothing ' Default to no value in the cell
+	Result(2) = "CLEAR" ' Default to having no cell fill color
+
+	Dim TemporaryBoolean As Boolean = Nothing
+	Dim TemporaryInteger As Integer = Nothing
+	Dim TemporaryDouble As Double = Nothing
+	Dim TemporaryDate As Date = Nothing
+	Dim TemporaryString As String = Nothing
+	Dim TemporaryBoolean2 As Boolean = Nothing
+	Dim TemporaryInteger2 As Integer = Nothing
+	Dim TemporaryDouble2 As Double = Nothing
+	Dim TemporaryDate2 As Date = Nothing
+	Dim TemporaryString2 As String = Nothing
+	Dim TargetProperty As Inventor.Property
+
+	If PropertyAction <> "Get / Change Value" Then
+		Result(1) = "Error-Invalid Action for this Property Type"
+		Result(2) = "RED"
+		Return Result
+	End If
+
+	TargetProperty = GetExistingProperty(TargetDocument, PropertyName)
+	Try
+		TemporaryString = TargetProperty.Name
+	Catch
+		Result(1) = "Error-Property not found"
+		Result(2) = "RED"
+		Return Result
+	End Try
+
+	' Design state requires special treatment as it is actually an integer property that is displayed as text
+	If PropertyName = "Design State" Or PropertyName = "Design Status"
+		PropertyFormat = "Integer"
+		If InputPropertyValue <> Nothing Then
+			InputPropertyValue = DesignStateStringtoInteger(InputPropertyValue)
+		End If
+	End If
+
+	If PropertyFormat = "Boolean" Then
+		'[ Boolean Values
+		Try
+			TemporaryBoolean = TargetProperty.Value ' This will error if current value is not Boolean
+		Catch
+			Result(1) = "Warning-Existing value is not a Yes/No"
+			Result(2) = "RED"
+			Return Result
+		End Try
+		If InputPropertyValue = Nothing Then
+			Result(1) = TemporaryBoolean.ToString
+		ElseIf FileIsReadOnly Then
+			Result(1) = "Error-File Is Read Only. Current Value: " & TemporaryBoolean.ToString
+			Result(2) = "RED"
+		ElseIf AllowFileChanges = False Then
+			Result(1) = TemporaryBoolean.ToString
+		Else
+			TemporaryString = ChangeStringToBoolean(InputPropertyValue)
+			If TemporaryString = "Not Boolean" Then
+				Result(1) = "Error-Input value is not a Boolean"
+				Result(2) = "RED"
+			Else
+				TemporaryBoolean2 = Convert.ToBoolean(TemporaryString)
+				If TemporaryBoolean = TemporaryBoolean2 Then
+					Result(1) = TemporaryBoolean.ToString
+					Result(2) = "YELLOW"
+				Else
+					TargetProperty.Value = TemporaryBoolean2
+					Result(0) = "YES"
+					Result(1) = TemporaryBoolean2.ToString
+					Result(2) = "GREEN"
+				End If
+			End If
+		End If
+		']
+	ElseIf PropertyFormat = "Integer" Then
+		'[ Integer Values
+		Try
+			TemporaryInteger = TargetProperty.Value ' This will error if current value is not a number
+		Catch
+			If PropertyName = "Design State" Or PropertyName = "Design Status" Then
+				Result(1) = "Error-Existing value is not a valid selection"
+			Else
+				Result(1) = "Error-Existing value is not a number"
+			End If
+			Result(2) = "RED"
+			Return Result
+		End Try
+		If InputPropertyValue = Nothing Then
+			Result(1) = TemporaryInteger.ToString
+		ElseIf FileIsReadOnly Then
+			Result(1) = "Error-File is Read Only. Current Value: " & TemporaryInteger.ToString
+			Result(2) = "RED"
+		ElseIf AllowFileChanges = False Then
+			Result(1) = TemporaryInteger.ToString
+		Else
+			Try
+				TemporaryInteger2 = Convert.ToInt32(InputPropertyValue)  ' This will error if input value is not a number
+			Catch
+				If PropertyName = "Design State" Or PropertyName = "Design Status" Then
+					Result(1) = "Error-Input value is not a valid selection"
+				Else
+					Result(1) = "Error-Input value is not a number"
+				End If
+				Result(2) = "RED"
+				Return Result
+			End Try
+			If TemporaryInteger = TemporaryInteger2 Then
+				Result(1) = TemporaryInteger.ToString
+				Result(2) = "YELLOW"
+			Else
+				TargetProperty.Value = TemporaryInteger2
+				Result(0) = "YES"
+				Result(1) = TemporaryInteger2.ToString
+				Result(2) = "GREEN"
+			End If
+		End If
+		If PropertyName = "Design State" Or PropertyName = "Design Status" Then
+			TemporaryInteger = Convert.ToInt32(Result(1))
+			Result(1) = DesignStateIntegertoString(TemporaryInteger)
+			If Result(1) = "Invalid Value" Then
+				Result(2) = "RED"
+			End If
+		End If
+
+		Return Result
+		']
+	ElseIf PropertyFormat = "Double" Then
+		'[ Decimal Values
+		Try
+			TemporaryDouble = TargetProperty.Value ' This will error if current value is not a number
+		Catch
+			Result(1) = "Error-Existing value is not a number"
+			Result(2) = "RED"
+			Return Result
+		End Try
+		If InputPropertyValue = Nothing Then
+			Result(1) = TemporaryDouble.ToString
+		ElseIf FileIsReadOnly Then
+			Result(1) = "Error-File is Read Only. Current Value: " & TemporaryDouble.ToString
+			Result(2) = "RED"
+		ElseIf AllowFileChanges = False Then
+			Result(1) = TemporaryDouble.ToString
+		Else
+			Try
+				TemporaryDouble2 = Convert.ToDouble(InputPropertyValue)  ' This will error if input value is not a number
+			Catch
+				Result(1) = "Error-Input value is not a number"
+				Result(2) = "RED"
+				Return Result
+			End Try
+			If TemporaryDouble = TemporaryDouble2 Then
+				Result(1) = TemporaryDouble.ToString
+				Result(2) = "YELLOW"
+			Else
+				TargetProperty.Value = TemporaryDouble2
+				Result(0) = "YES"
+				Result(1) = TemporaryDouble2.ToString
+				Result(2) = "GREEN"
+			End If
+		End If
+		Return Result
+		']
+	ElseIf PropertyFormat = "Date" Then
+		'[ Date Values
+		Try
+			TemporaryDate = TargetProperty.Value ' This will error if current value is not a number
+		Catch
+			Result(1) = "Error-Existing value is not a number"
+			Result(2) = "RED"
+			Return Result
+		End Try
+		If InputPropertyValue = Nothing Then
+			Result(1) = TemporaryDate.ToShortDateString
+		ElseIf FileIsReadOnly Then
+			Result(1) = "Error-File is Read Only. Current Value: " & TemporaryDate.ToShortDateString
+			Result(2) = "RED"
+		ElseIf AllowFileChanges = False Then
+			Result(1) = TemporaryDate.ToShortDateString
+		Else
+			Try
+				TemporaryDate2 = Convert.ToDateTime(InputPropertyValue)  ' This will error if input value is not a date
+			Catch
+				Result(1) = "Error-Input value is not a date"
+				Result(2) = "RED"
+				Return Result
+			End Try
+			If TemporaryDate = TemporaryDate2 Then
+				Result(1) = TemporaryDate.ToShortDateString
+				Result(2) = "YELLOW"
+			Else
+				TargetProperty.Value = TemporaryDate2
+				Result(0) = "YES"
+				Result(1) = TemporaryDate2.ToShortDateString
+				Result(2) = "GREEN"
+			End If
+		End If
+		Return Result
+		']
+	Else ' Everything Else Should be a String
+		'[ String Values
+		Try
+			TemporaryString = TargetProperty.Value ' This will error if current value is not text
+		Catch
+			Result(1) = "Warning-Existing value is not text"
+			Result(2) = "YELLOW"
+			Return Result
+		End Try
+		If InputPropertyValue = Nothing Then
+			Result(1) = TemporaryString
+		ElseIf FileIsReadOnly Then
+			Result(1) = "Error-File is Read Only. Current Value: " & TemporaryString
+			Result(2) = "RED"
+		ElseIf AllowFileChanges = False Then
+			Result(1) = TemporaryString
+		Else
+			Try
+				TemporaryString2 = InputPropertyValue  ' This will error if input value is not text
+			Catch
+				Result(1) = "Error-Input value is not text"
+				Result(2) = "RED"
+				Return Result
+			End Try
+			If TemporaryString = TemporaryString2 Then
+				Result(1) = TemporaryString
+				Result(2) = "YELLOW"
+			Else
+				TargetProperty.Value = TemporaryString2
+				Result(0) = "YES"
+				Result(1) = TemporaryString2
+				Result(2) = "GREEN"
+			End If
+		End If
+		Return Result
+		']
+	End If
+
+	Return Result
+
+End Function
+
+Function ModelNoteProcessing(TargetDocument As Document, NoteName As String, NoteAction As String, NoteValue As String, AllowFileChanges As Boolean, FileIsReadOnly As Boolean) As String()
+	Dim Result(2) As String
+	Result(0) = "NO" ' Default to not saving the file
+	Result(1) = Nothing ' Default to no value in the cell
+	Result(2) = "CLEAR" ' Default to having no cell fill color
+
+	Dim ScreenNotes As ModelGeneralNotes
+	Dim ModelNoteExists As Boolean = False
+	Dim TemporaryString As String = Nothing
+
+	Dim TargetDocumentType As DocumentTypeEnum = TargetDocument.DocumentType
+
+	If TargetDocumentType = kPartDocumentObject Or TargetDocumentType = kAssemblyDocumentObject Then
+		ScreenNotes = TargetDocument.ComponentDefinition.ModelAnnotations.ModelGeneralNotes
+	Else
+		'Drawings and Presentations not supported since they don't have model annotations
+		Result(1) = "Warning-Model notes not supported on this file type"
+		Result(2) = "YELLOW"
+		Return Result
+	End If
+
+	Dim NoteLocation As ScreenQuadrantEnum
+
+	Try
+		TemporaryString = ScreenNotes.Item(NoteName).Definition.Text.Text
+		ModelNoteExists = True
+	Catch
+		ModelNoteExists = False
+	End Try
+
+	If NoteAction = "Delete Note" Then
+		If ModelNoteExists = False Then
+			Result(1) = "Error-Model note name: " & NoteName & " :not found"
+			Result(2) = "RED"
+		ElseIf FileIsReadOnly Then
+			Result(1) = "Error-File is Read Only"
+			Result(2) = "RED"
+			Return Result
+		Else ' Delete current note if it exists
+			Try
+				ScreenNotes.Item(NoteName).Delete
+				Result(0) = "YES"
+				Result(1) = "Model note deleted"
+				Result(2) = "GREEN"
+			Catch
+				Result(1) = "Error-Note deletion failed"
+				Result(2) = "RED"
+			End Try
+			Return Result
+		End If
+	ElseIf NoteAction = "Get Note Text" Then
+		If ModelNoteExists = False Then
+			Result(1) = "Error-Model note name: " & NoteName & " :not found"
+			Result(2) = "RED"
+		Else
+			Try
+				Result(1) = ScreenNotes.Item(NoteName).Definition.Text.Text
+			Catch
+				Result(1) = "Error-Model note name: " & NoteName & " :not found"
+				Result(2) = "RED"
+			End Try
+			Return Result
+		End If
+	ElseIf NoteAction = "Add / Change Note-Lower Left" Then
+		NoteLocation = ScreenQuadrantEnum.kLowerLeftQuadrant
+	ElseIf NoteAction = "Add / Change Note-Lower Right" Then
+		NoteLocation = ScreenQuadrantEnum.kLowerRightQuadrant
+	ElseIf NoteAction = "Add / Change Note-Upper Left" Then
+		NoteLocation = ScreenQuadrantEnum.kUpperLeftQuadrant
+	ElseIf NoteAction = "Add / Change Note-Upper Right" Then
+		NoteLocation = ScreenQuadrantEnum.kUpperRightQuadrant
+	Else
+		Result(1) = "Error-Invalid Action for Model Notes"
+		Result(2) = "RED"
+		Return Result
+	End If
+
+	If FileIsReadOnly And NoteValue <> Nothing Then
+		Result(1) = "Error-File is Read Only. Current Value: " & ScreenNotes.Item(NoteName).Definition.Text.Text
+		Result(2) = "RED"
+		Return Result
+	End If
+
+	Try ' Delete current note if it exists
+		ScreenNotes.Item(NoteName).Delete
+	Catch
+
+	End Try
+
+	Dim FontSize As Double = 0.25
+	Dim FormattedText As String = "<StyleOverride FontSize='" & FontSize & "' >" & NoteValue & "</StyleOverride><Br/>"
+	Dim ScreenNoteDefinition As ModelGeneralNoteDefinition = ScreenNotes.CreateDefinition("", True, NoteLocation)
+
+	Dim ScreenNote As ModelGeneralNote
+	ScreenNoteDefinition.Text.Size = FontSize
+	ScreenNote = ScreenNotes.Add(ScreenNoteDefinition)
+	ScreenNote.Name = NoteName
+
+	Try
+		ScreenNotes.Item(NoteName).Definition.Text.FormattedText = FormattedText
+		Result(0) = "YES"
+		Result(1) = ScreenNotes.Item(NoteName).Definition.Text.Text
+		Result(2) = "GREEN"
+	Catch
+		Result(1) = "Error-Note update failed"
+		Result(2) = "RED"
+	End Try
+
+	Return Result
+
+End Function
+
+Function PhysicalPropertyOutput(TargetDocument As Document, PropertyName As String, PropertyAction As String, InputPropertyValue As String) As String()
+	Dim Result(2) As String
+	Result(0) = "NO" ' Default to not saving the file
+	Result(1) = Nothing ' Default to no value in the cell
+	Result(2) = "CLEAR" ' Default to having no cell fill color
+	Dim TargetDocumentType As DocumentTypeEnum = TargetDocument.DocumentType
+
+	If TargetDocumentType <> kPartDocumentObject And TargetDocumentType <> kAssemblyDocumentObject Then
+		Result(1) = "Warning-Filetype has no physical properties"
+		Result(2) = "YELLOW"
+		Return Result
+	ElseIf PropertyAction <> "Get Value" Then
+		Result(1) = "Error-Invalid Action for this Property Type"
+		Result(2) = "RED"
+		Return Result
+	ElseIf InputPropertyValue <> Nothing Then
+		Result(1) = "Error-Cannot change physical properties"
+		Result(2) = "RED"
+		Return Result
+	End If
+
+	Dim TargetComponentDefinition As ComponentDefinition = TargetDocument.ComponentDefinition
+	Dim TargetUnitsOfMeasure As UnitsOfMeasure = TargetDocument.UnitsOfMeasure
+	Dim TargetMassUnits As UnitsTypeEnum = TargetUnitsOfMeasure.MassUnits
+	Dim TargetLengthUnits As UnitsTypeEnum = TargetUnitsOfMeasure.LengthUnits
+	Dim TargetAngleUnits As UnitsTypeEnum = TargetUnitsOfMeasure.AngleUnits
+	Dim TargetLengthUnitsText As String = TargetUnitsOfMeasure.GetStringFromType(TargetLengthUnits)
+	Dim TargetAreaUnitsText As String = TargetUnitsOfMeasure.GetStringFromType(TargetLengthUnits) & " " & TargetLengthUnitsText
+	Dim TargetVolumeUnitsText As String = TargetUnitsOfMeasure.GetStringFromType(TargetLengthUnits) & " " & TargetAreaUnitsText
+	Dim TargetAngleUnitsText As String = TargetUnitsOfMeasure.GetStringFromType(TargetAngleUnits)
+	Dim TargetMomentUnitsText As String = TargetUnitsOfMeasure.GetStringFromType(TargetMassUnits) & " " & TargetUnitsOfMeasure.GetStringFromType(TargetLengthUnits) & "^2"
+	Dim StandardMoments(5) As Double
+	Dim PrincipalMoments(2) As Double
+	Dim PrincipalRotation(2) As Double
+	Dim GyrationRadius(2) As Double
+
+	TargetComponentDefinition.MassProperties.XYZMomentsOfInertia(StandardMoments(0), StandardMoments(1), StandardMoments(2), StandardMoments(3), StandardMoments(4), StandardMoments(5))
+	TargetComponentDefinition.MassProperties.PrincipalMomentsOfInertia(PrincipalMoments(0), PrincipalMoments(1), PrincipalMoments(2))
+	TargetComponentDefinition.MassProperties.RotationToPrincipal(PrincipalRotation(0), PrincipalRotation(1), PrincipalRotation(2))
+	TargetComponentDefinition.MassProperties.RadiusOfGyration(GyrationRadius(0), GyrationRadius(1), GyrationRadius(2))
+
+	If PropertyName = "Area" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(TargetDocument.ComponentDefinition.MassProperties.Area, "cm cm", TargetAreaUnitsText) & " " & TargetLengthUnitsText & "^2"
+	ElseIf PropertyName = "Mass" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(TargetDocument.ComponentDefinition.MassProperties.Mass, "kg", TargetMassUnits) & " " & TargetUnitsOfMeasure.GetStringFromType(TargetMassUnits)
+	ElseIf PropertyName = "Material" Then
+		If TargetDocumentType = kPartDocumentObject Then
+			Result(1) = TargetDocument.ActiveMaterial.DisplayName
+		Else
+			Result(1) = "Warning-No active material in assemblies"
+			Result(2) = "YELLOW"
+		End If
+	ElseIf PropertyName = "Volume" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(TargetDocument.ComponentDefinition.MassProperties.Volume, "cm cm cm", TargetVolumeUnitsText) & " " & TargetLengthUnitsText & "^3"
+	ElseIf PropertyName = "Sheet Metal Style" Then
+		If TargetDocumentType = kPartDocumentObject Then
+			If TargetDocument.DocumentSubType.DocumentSubTypeID = "{9C464203-9BAE-11D3-8BAD-0060B0CE6BB4}" Then ' Check if part is sheet metal
+				Result(1) = TargetComponentDefinition.ActiveSheetMetalStyle.Name
+			Else
+				Result(1) = "Warning-Not a sheet metal part"
+				Result(2) = "YELLOW"
+			End If
+		Else
+			Result(1) = "Warning-Not a sheet metal part"
+			Result(2) = "YELLOW"
+		End If
+	ElseIf PropertyName = "Moment-Ixx" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(StandardMoments(0), "kg cm^2", TargetMomentUnitsText) & " " & TargetMomentUnitsText
+	ElseIf PropertyName = "Moment-Iyy" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(StandardMoments(1), "kg cm^2", TargetMomentUnitsText) & " " & TargetMomentUnitsText
+	ElseIf PropertyName = "Moment-Izz" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(StandardMoments(2), "kg cm^2", TargetMomentUnitsText) & " " & TargetMomentUnitsText
+	ElseIf PropertyName = "Moment-Ixy" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(StandardMoments(3), "kg cm^2", TargetMomentUnitsText) & " " & TargetMomentUnitsText
+	ElseIf PropertyName = "Moment-Iyz" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(StandardMoments(4), "kg cm^2", TargetMomentUnitsText) & " " & TargetMomentUnitsText
+	ElseIf PropertyName = "Moment-Ixz" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(StandardMoments(5), "kg cm^2", TargetMomentUnitsText) & " " & TargetMomentUnitsText
+	ElseIf PropertyName = "Moment-I1" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(PrincipalMoments(0), "kg cm^2", TargetMomentUnitsText) & " " & TargetMomentUnitsText
+	ElseIf PropertyName = "Moment-I2" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(PrincipalMoments(1), "kg cm^2", TargetMomentUnitsText) & " " & TargetMomentUnitsText
+	ElseIf PropertyName = "Moment-I3" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(PrincipalMoments(2), "kg cm^2", TargetMomentUnitsText) & " " & TargetMomentUnitsText
+	ElseIf PropertyName = "Moment-Rx" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(PrincipalRotation(0), "rad", TargetAngleUnits) & " " & TargetAngleUnitsText
+	ElseIf PropertyName = "Moment-Ry" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(PrincipalRotation(1), "rad", TargetAngleUnits) & " " & TargetAngleUnitsText
+	ElseIf PropertyName = "Moment-Rz" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(PrincipalRotation(2), "rad", TargetAngleUnits) & " " & TargetAngleUnitsText
+	ElseIf PropertyName = "Moment-Kx" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(GyrationRadius(0), "cm", TargetLengthUnits) & " " & TargetLengthUnitsText
+	ElseIf PropertyName = "Moment-Ky" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(GyrationRadius(1), "cm", TargetLengthUnits) & " " & TargetLengthUnitsText
+	ElseIf PropertyName = "Moment-Kz" Then
+		Result(1) = TargetUnitsOfMeasure.ConvertUnits(GyrationRadius(2), "cm", TargetLengthUnits) & " " & TargetLengthUnitsText
+	Else
+		Result(1) = "Error-Unsupported property type"
+		Result(2) = "RED"
+	End If
+
+	Return Result
+
+End Function
+
+Function CopyProcessedFiles(FileList(, ) As String, CopyPath As String, FirstIndex As Integer, LastIndex As Integer) As String()
+	Dim Result(LastIndex) As String
+	Dim ErrorCount As Integer = 0
+	Dim FileName As String
+
+	For i = FirstIndex To LastIndex
+		If String.IsNullOrEmpty(FileList(i, 1)) = True Then Continue For ' Skip to next file if row is blank
+		FileName = Mid(FileList(i, 1), (InStrRev(FileList(i, 1), "\", , vbTextCompare)) + 1)
+		Try
+			ThisApplication.FileManager.CopyFile(FileList(i, 1), CopyPath & FileName, True)
+		Catch
+			ErrorCount += 1
+			Result(ErrorCount) = FileList(i, 1)
+		End Try
+	Next
+
+	Result(0) = ErrorCount.ToString
+
+	Return Result
+
+End Function
+
+Function MakeAssembly(FileList(, ) As String, FileLocation As String, FirstIndex As Integer, LastIndex As Integer) As String()
+	Dim Result(LastIndex) As String
+	Dim ErrorCount As Integer = 0
+
+	Dim NewAssemblyFileName As String = "iPropertyManager - DeleteMe.IAM"
+	Dim TemplateFullPath As String = ThisApplication.FileLocations.Workspace & "\CAD Support\Templates\Global\BAC Global Assy.iam"
+	Dim NewAssemblyFullFilePath As String = FileLocation & NewAssemblyFileName
+	ThisApplication.FileManager.CopyFile(TemplateFullPath, NewAssemblyFullFilePath, True) ' Copy template file to new assembly file, and overwrite if it already exists
+	Call MakeFileWriteable(NewAssemblyFullFilePath)
+	Dim NewAssemblyDocument As AssemblyDocument = ThisApplication.Documents.Open(NewAssemblyFullFilePath, False) ' Open as Hidden when building the file to improve performance
+	Dim NewAssemblyComponentDefinition As AssemblyComponentDefinition = NewAssemblyDocument.ComponentDefinition
+	Dim NewAssemblyOccurrences As ComponentOccurrences = NewAssemblyComponentDefinition.Occurrences
+	Dim InsertionMatrix As Matrix = ThisApplication.TransientGeometry.CreateMatrix ' When a matrix gets created it is filled with 0,0,0
+	Dim FileAddFailureFlag As Boolean = False
+	Dim FileAddFailureCount As Integer = 0
+	Dim CurrentFullFileName As String
+	Dim CurrentFileExtension As String
+	Dim CurrentFileName As String
+	Dim CurrentFilePath As String
+	Dim FileQPA As Integer
+	Dim PartMargin As Double = 6 * 2.54 ' 6 Inches converted to database units, cm
+	Dim PreviousIndex As Integer = 0
+
+	For i = FirstIndex To LastIndex
+		FileQPA = FileList(i, 2)
+		If FileQPA = 0 Then Continue For
+		CurrentFullFileName = UCase(FileList(i, 1))
+		CurrentFilePath = Left(CurrentFullFileName, (InStrRev(CurrentFullFileName, "\", -1, vbTextCompare)))
+		CurrentFileName = Mid(CurrentFullFileName, CurrentFilePath.Length + 1)
+		CurrentFileExtension = UCase(Right(CurrentFileName, 4))
+		If CurrentFileExtension = ".IPT" Or CurrentFileExtension = ".IAM" Then ' This will skip empty rows and non comopnent files (IDW & IPN)
+			Try ' Skip to next file if there is an error
+				If i = FirstIndex Then
+					InsertionMatrix.Cell(1, 4) = 0
+				Else
+					InsertionMatrix.Cell(1, 4) += Abs(Convert.ToDouble(FileList(PreviousIndex, 3))) + Abs(Convert.ToDouble(FileList(i, 6))) + PartMargin
+				End If
+				PreviousIndex = i
+				For j = 1 To FileQPA
+					NewAssemblyOccurrences.Add(CurrentFullFileName, InsertionMatrix)
+					If j = FileQPA Then
+						InsertionMatrix.Cell(2, 4) = 0
+					Else
+						InsertionMatrix.Cell(2, 4) += Abs(Convert.ToDouble(FileList(i, 4))) + PartMargin + Abs(Convert.ToDouble(FileList(i, 7)))
+					End If
+				Next
+			Catch
+				ErrorCount += 1
+				Result(ErrorCount) = FileList(i, 1)
+			End Try
+		End If
+	Next
+	NewAssemblyDocument.Update2(True)
+	NewAssemblyDocument.Save
+	NewAssemblyDocument.Close ' Close the file since it isn't visible
+
+	NewAssemblyDocument = ThisApplication.Documents.Open(NewAssemblyFullFilePath, True) ' Open the file as visible now that it is complete
+
+	Result(0) = ErrorCount.ToString
+
+	Return Result
+
+End Function
+
+Function GetModelExtents(TargetDocument As Document) As Double()
+	Dim Result(6) As Double
+	' Positions: 0 = Process Control, 1 = Max X, 2 = Max Y, 3 = Max Z, 4 = Min X, 5 = Min Y, 6 = Min Z
+
+	Dim TargetDocumentType As DocumentTypeEnum = TargetDocument.DocumentType
+	Dim TargetComponentDefinition As ComponentDefinition
+	Dim TargetRangeBox As Box
+
+	If TargetDocumentType = kPartDocumentObject Or TargetDocumentType = kAssemblyDocumentObject Then
+		TargetComponentDefinition = TargetDocument.ComponentDefinition
+		TargetRangeBox = TargetComponentDefinition.RangeBox
+		Result(0) = 1
+		Result(1) = TargetRangeBox.MaxPoint.X
+		Result(2) = TargetRangeBox.MaxPoint.Y
+		Result(3) = TargetRangeBox.MaxPoint.Z
+		Result(4) = TargetRangeBox.MinPoint.X
+		Result(5) = TargetRangeBox.MinPoint.Y
+		Result(6) = TargetRangeBox.MinPoint.Z
+	Else ' Not a part or assembly, so no model to measure
+		Result(0) = -1
+		Result(1) = 0
+		Result(2) = 0
+		Result(3) = 0
+		Result(4) = 0
+		Result(5) = 0
+		Result(6) = 0
+	End If
+
+	Return Result
+
+End Function
+
+Function OpenProcessedFiles(FilesToOpen As String, FileList(, ) As String, FirstIndex As Integer, LastIndex As Integer) As String()
+	Dim Result(LastIndex) As String
+	Dim ErrorCount As Integer = 0
+	Dim FullFileName As String
+	Dim FileExtension As String
+	Dim FilePath As String
+	Dim FileName As String
+	Dim OpenFile As Inventor.Document
+
+	For i = FirstIndex To LastIndex
+		FullFileName = UCase(FileList(i, 1))
+		FilePath = Left(FullFileName, (InStrRev(FullFileName, "\", -1, vbTextCompare)))
+		FileName = Mid(FullFileName, FilePath.Length + 1)
+		FileExtension = UCase(Right(FileName, 4))
+
+		Try ' Skip to next file if there is an error
+			If FilesToOpen = "All" Then
+				OpenFile = ThisApplication.Documents.Open(FullFileName, True)
+			ElseIf FilesToOpen = "IPT" Then
+				If FileExtension = ".IPT" Then
+					OpenFile = ThisApplication.Documents.Open(FullFileName, True)
+				End If
+			ElseIf FilesToOpen = "IAM" Then
+				If FileExtension = ".IAM" Then
+					OpenFile = ThisApplication.Documents.Open(FullFileName, True)
+				End If
+			ElseIf FilesToOpen = "IPT & IAM" Then
+				If FileExtension = ".IPT" Or FileExtension = ".IAM" Then
+					OpenFile = ThisApplication.Documents.Open(FullFileName, True)
+				End If
+			ElseIf FilesToOpen = "IPN" Then
+				If FileExtension = ".IPN" Then
+					OpenFile = ThisApplication.Documents.Open(FullFileName, True)
+				End If
+			ElseIf FilesToOpen = "IDW" Then
+				If FileExtension = ".IDW" Then
+					OpenFile = ThisApplication.Documents.Open(FullFileName, True)
+				End If
+			ElseIf FilesToOpen = "IPN & IDW" Then
+				If FileExtension = ".IPN" Or FileExtension = ".IDW" Then
+					OpenFile = ThisApplication.Documents.Open(FullFileName, True)
+				End If
+			Else
+				ThisApplication.UserInterfaceManager.UserInteractionDisabled = False ' Turn User Interface back on to allow clicking the button on the dialog box
+				MessageBox.Show("Opening Files with option: " & FilesToOpen & vbCrLf & "is not supported yet")
+				ThisApplication.UserInterfaceManager.UserInteractionDisabled = True ' Turn User Interface back off
+				Exit For
+			End If
+		Catch
+			ErrorCount += 1
+			Result(ErrorCount) = FileName
+		End Try
+	Next
+
+	Result(0) = ErrorCount.ToString
+
+	Return Result
+
+End Function
+
+Sub WriteListToExcel(ExcelFilePath As String, WorkSheetName As String, ColumnLetter As String, StartRow As Integer, RowCount As Integer, DataArray() As String)
+	Dim OutputRow As Integer
+
+	For i = 1 To RowCount
+		OutputRow = StartRow + i - 1
+		GoExcel.CellValue(ExcelFilePath, WorkSheetName, ColumnLetter & OutputRow) = DataArray(i)
+	Next
+
+	GoExcel.Save
+	GoExcel.Close
+
+End Sub
+
+Sub ClearExcelRow(ExcelFilePath As String, WorkSheetName As String, RowNumber As Integer, StartColumnNumber As Integer, EndColumnNumber As Integer)
+	Dim ColumnLetter As String
+
+	For i = StartColumnNumber To EndColumnNumber
+		ColumnLetter = GetColumnLetter(i)
+		GoExcel.CellValue(ExcelFilePath, WorkSheetName, ColumnLetter & RowNumber) = Nothing
+	Next
+
+End Sub
+
+Function ChangeStringToBoolean(InputString As String) As String
+	Dim Result As String = Nothing
+
+	Try
+		Result = Convert.ToBoolean(InputString)
+	Catch
+		If UCase(InputString) = "TRUE" Or UCase(InputString) = "YES" Or InputString = "1" _
+			Or UCase(InputString) = "T" Or UCase(InputString) = "Y" Then
+			Result = "True"
+		ElseIf UCase(InputString) = "FALSE" Or UCase(InputString) = "NO" Or InputString = "0" _
+			Or UCase(InputString) = "F" Or UCase(InputString) = "N" Then
+			Result = "False"
+		Else
+			Result = "Not Boolean"
+		End If
+	End Try
+
+	Return Result
+
+End Function
+
+Function CheckModelForFeatureErrors(TargetDocument As Document) As String
+	Dim Result As String
+	Dim ErrorCount As Integer = 0
+	Dim TargetDocumentType As DocumentTypeEnum = TargetDocument.DocumentType
+	Dim TargetPartDocument As PartDocument
+	Dim TargetPartFeatures As PartFeatures
+	Dim TargetAssemblyDocument As AssemblyDocument
+	Dim TargetAssemblyFeatures As Features
+	Dim TargetFeature As PartFeature
+	Dim FoundOutofDateFeature As Boolean = False
+	Dim FeatureHealth As HealthStatusEnum
+
+	If TargetDocumentType = kPartDocumentObject Then
+		TargetPartDocument = TargetDocument
+		TargetPartFeatures = TargetPartDocument.ComponentDefinition.Features
+		For Each TargetFeature In TargetPartFeatures
+			FeatureHealth = TargetFeature.HealthStatus
+			If FeatureHealth = 11777 Or FeatureHealth = 11779 Or FeatureHealth = 11788 Then ' Unknown, Needs Recompute, Not solved yet
+				FoundOutofDateFeature = True
+				Exit For
+			End If
+		Next
+		If FoundOutofDateFeature Then
+			TargetPartDocument.Rebuild2(True)
+		End If
+		For Each TargetFeature In TargetPartFeatures
+			FeatureHealth = TargetFeature.HealthStatus
+			If FeatureHealth <> 11778 And FeatureHealth <> 11785 And FeatureHealth <> 11784 Then ' Up to date, After End of Folder, Suppressed
+				ErrorCount += 1
+			End If
+		Next
+	ElseIf TargetDocumentType = kAssemblyDocumentObject Then
+		TargetAssemblyDocument = TargetDocument
+		TargetAssemblyFeatures = TargetAssemblyDocument.ComponentDefinition.Features
+		For Each TargetFeature In TargetAssemblyFeatures
+			FeatureHealth = TargetFeature.HealthStatus
+			If FeatureHealth = 11777 Or FeatureHealth = 11779 Or FeatureHealth = 11788 Then ' Unknown, Needs Recompute, Not solved yet
+				FoundOutofDateFeature = True
+				Exit For
+			End If
+		Next
+		If FoundOutofDateFeature Then
+			TargetAssemblyDocument.Rebuild2(True)
+		End If
+		For Each TargetFeature In TargetAssemblyFeatures
+			FeatureHealth = TargetFeature.HealthStatus
+			If FeatureHealth <> 11778 And FeatureHealth <> 11785 And FeatureHealth <> 11784 Then ' Up to date, After End of Folder, Suppressed
+				ErrorCount += 1
+			End If
+		Next
+	Else
+		Result = "N/A"
+		Return Result
+	End If
+
+	If ErrorCount = 0 Then
+		Result = "None"
+	Else
+		Result = ErrorCount.ToString & " Errors Found"
+	End If
+
+	Return Result
+
+End Function
+
+Sub ProcessAndSaveFile(TargetDocument As Document, CodeVersionProperty As String, CodeVersion As Double, ForceFullAutomationFlag As Boolean, DisableTimedMessages As Boolean, SaveFilesTwice As Boolean)
+	Dim ForceAutomationProcessesProperty As String = "GeneralSaveWrapperForceAutomation"
+	Dim MessageTimerProperty As String = "TimedMessageDuration"
+	Dim TargetDocumentType As DocumentTypeEnum = TargetDocument.DocumentType
+
+	Call ChangeNumberCustomProperty(TargetDocument, CodeVersionProperty, CodeVersion, True)
+
+	If TargetDocument.Dirty Then
+		If TargetDocumentType = kAssemblyDocumentObject Or TargetDocumentType = kPartDocumentObject
+			TargetDocument.Rebuild2(True)
+		Else
+			TargetDocument.Update2(True)
+		End If
+	End If
+
+	If ForceFullAutomationFlag Then Call ChangeBooleanCustomProperty(TargetDocument, ForceAutomationProcessesProperty, True, True)
+	If DisableTimedMessages Then Call ChangeNumberCustomProperty(TargetDocument, MessageTimerProperty, 999, True)
+	TargetDocument.Save
+
+	If SaveFilesTwice Then
+		If TargetDocument.Dirty Then
+			If TargetDocumentType = kAssemblyDocumentObject Or TargetDocumentType = kPartDocumentObject
+				TargetDocument.Rebuild2(True)
+			Else
+				TargetDocument.Update2(True)
+			End If
+		End If
+		If ForceFullAutomationFlag Then Call ChangeBooleanCustomProperty(TargetDocument, ForceAutomationProcessesProperty, True, True)
+		If DisableTimedMessages Then Call ChangeNumberCustomProperty(TargetDocument, MessageTimerProperty, 999, True)
+		TargetDocument.Save
+	End If
+
+End Sub
+
+Function GenerateProgressMessage(NumberCompleted As Integer, TotalCount As Integer, FileName As String, ElapsedTime As TimeSpan) As String
+	Dim Result As String
+	Dim ElapsedMinutes As Double = Round(ElapsedTime.TotalMinutes, 2)
+	Dim MinutesPerFile As Double
+	If NumberCompleted > 0 Then
+		MinutesPerFile = ElapsedTime.TotalMinutes / NumberCompleted
+	Else
+		MinutesPerFile = 0.50 ' Estimate 30 seconds per file to start
+	End If
+
+	Dim MinutesRemaining As Double = Round(((TotalCount + 1 - NumberCompleted) * MinutesPerFile), 2)
+	Dim TimeSpanRemaining As TimeSpan = TimeSpan.FromMinutes(MinutesRemaining)
+	Dim CompletionDateTime As DateTime = DateTime.Now.Add(TimeSpanRemaining)
+	Dim CompletionTime As String = CompletionDateTime.ToString
+
+	Result = "Current File: " & FileName & vbCrLf & _
+	"File number: " & NumberCompleted + 1 & " of " & TotalCount & vbCrLf & _
+	"Elapsed time: " & ElapsedMinutes & " minutes" & vbCrLf & _
+	"Estimated minutes remaining to complete processing files: " & MinutesRemaining & vbCrLf & _
+	"Estimated time when files will be processed: " & CompletionTime
+
+	Return Result
+
+End Function
+
+Sub OnScreenMessage(DisplayDocument As Document, MessageText As String)
+	Dim DisplayedNoteName As String = "Temporary Display Message"
+	Dim ScreenNotes As ModelGeneralNotes
+
+	Dim DisplayDocumentType As DocumentTypeEnum = DisplayDocument.DocumentType
+
+	If DisplayDocumentType = kPartDocumentObject Or DisplayDocumentType = kAssemblyDocumentObject Then
+		ScreenNotes = DisplayDocument.ComponentDefinition.ModelAnnotations.ModelGeneralNotes
+	Else
+		'Drawings and Presentations not supported since they don't have model annotations
+		Exit Sub
+	End If
+
+	Try ' Delete current note if it exists
+		ScreenNotes.Item(DisplayedNoteName).Delete
+	Catch
+	End Try
+
+	If MessageText = Nothing Then Exit Sub
+
+	Dim FontSize As Double = 0.25
+	Dim FormattedText As String = "<StyleOverride FontSize='" & FontSize & "' >" & MessageText & "</StyleOverride><Br/>"
+	Dim ScreenNoteDefinition As ModelGeneralNoteDefinition = ScreenNotes.CreateDefinition("", True, kUpperLeftQuadrant)
+	Dim ScreenNote As ModelGeneralNote
+	ScreenNoteDefinition.Text.Size = FontSize
+	ScreenNote = ScreenNotes.Add(ScreenNoteDefinition)
+	ScreenNote.Name = DisplayedNoteName
+
+	ScreenNotes.Item(DisplayedNoteName).Definition.Text.FormattedText = FormattedText
+
+	ThisApplication.ActiveView.Update
+
+End Sub
+
+Function GetRowCount(DataFilePath As String, WorksheetName As String, HeaderRowCount As Integer, ColumnToCount As String) As Integer
+	Dim Result As Integer
+	Dim RowNumber As Integer = HeaderRowCount + 1
+
+	Do
+		If Len(GoExcel.CellValue(DataFilePath, WorksheetName, ColumnToCount & RowNumber)) = 0 Then
+			Result = RowNumber - HeaderRowCount - 1
+			Exit Do
+		Else
+			RowNumber += 1
+		End If
+	Loop
+
+	Return Result
+
+End Function
+
+Function GetColumnCount(DataFilePath As String, WorksheetName As String, HeaderColumnCount As Integer, RowToCount As Integer) As Integer
+	Dim Result As Integer
+	Dim ColumnNumber As Integer = HeaderColumnCount + 1
+	Dim ColumnLetter As String = GetColumnLetter(ColumnNumber)
+
+	Do
+		If Len(GoExcel.CellValue(DataFilePath, WorksheetName, ColumnLetter & RowToCount)) = 0 Then
+			Result = ColumnNumber - HeaderColumnCount - 1
+			Exit Do
+		Else
+			ColumnNumber += 1
+			ColumnLetter = GetColumnLetter(ColumnNumber)
+		End If
+	Loop
+
+	Return Result
+
+End Function
+
+Function GetDataFilePath As String
+	Dim FileDialogBox As Inventor.FileDialog = Nothing
+	ThisApplication.CreateFileDialog(FileDialogBox)
+	FileDialogBox.Filter = "Excel files(.xlsx)|*.xlsx"
+	FileDialogBox.DialogTitle = "Select iPropertyManager Data File"
+	FileDialogBox.CancelError = False
+	Try
+		FileDialogBox.ShowOpen()
+		Return FileDialogBox.FileName
+	Catch
+	End Try
+	Return String.Empty
+End Function
+
+Function CheckDataFile(DataFilePath As String, MinRequiredTemplateVersion As Double, MaxRequiredTemplateVersion As Double) As Boolean
+	Dim Result As Boolean
+	Dim DataFileTestValue As String = "iPropertyManager Data File Template Revisions"
+	Dim DataFileTest As String
+	Dim CurrentRevisionRow As Integer
+	Dim DataFileVersion As Double
+	Try
+		DataFileTest = GoExcel.CellValue(DataFilePath, "Revisions", "A1")  ' The first GoExcel command opens the data file and makes it active
+		If DataFileTest <> DataFileTestValue Then
+			MessageBox.Show("Selected file is NOT valid for iPropertyManager, template identifier not found on revisions worksheet" & vbCrLf & _
+			"Get current template file & code from Vault", "Invalid File")
+			Result = False
+			Return Result
+		End If
+		GoExcel.TitleRow = 2 ' On this table the column headers are in row 2
+		CurrentRevisionRow = GoExcel.FindRow(DataFilePath, "Revisions", "Status", "=", "Current") ' FindRow only looks by header titles, is there a way to find by column letter?
+		If CurrentRevisionRow = -1 Then ' Value of -1 indicates it did not find a match
+			MessageBox.Show("Selected file is NOT valid for iPropertyManager, there is no revision marked as Current" & vbCrLf & _
+			"Get current template file & code from Vault", "No current revision")
+			Result = False
+			Return Result
+		End If
+		DataFileVersion = GoExcel.CellValue(DataFilePath, "Revisions", "B" & CurrentRevisionRow) ' Change to find current row in column A like SMParams does
+		If DataFileVersion < MinRequiredTemplateVersion Or DataFileVersion > MaxRequiredTemplateVersion Then
+			MessageBox.Show("Selected file version is too old to work with this code vesion" & vbCrLf & "Get current code & template file from Vault" & vbCrLf & _
+			"Required Versions = " & MinRequiredTemplateVersion & " to " & MaxRequiredTemplateVersion & vbCrLf & "Selected Data File Version = " & DataFileVersion, "File Version not Compatible")
+			Result = False
+			Return Result
+		End If
+	Catch ' Will fail if there is no worksheet named revisions
+		MessageBox.Show("Selected file is NOT valid for iPropertyManager, revisions worksheet not found and/or revision table is organized differently than expected" & vbCrLf & _
+		"Get current template file & code from Vault", "Invalid File")
+		Result = False
+		Return Result
+	End Try
+
+	Result = True
+
+	Return Result
+
+End Function
+
+Function GetDataFileSettings(DataFilePath As String, DataFileSettingsCount As Integer) As String()
+	Dim Result(DataFileSettingsCount) As String
+	' Index: 0 = Process Control; 1 = Save First; 2 = Suppress Messages; 3 = Default Search Folder; 4 = Open Data File when Complete
+	' 5 = Open Inventor files when complete; 6 = Make assembly; 7 = Copy Path; 8 = iLogic Code; 9 = Force Full Automation
+	Dim ContinueProcess As MsgBoxResult
+
+	For i = 1 To DataFileSettingsCount
+		Result(i) = Trim(GoExcel.CellValue(DataFilePath, "Settings", "B" & i + 1))
+	Next
+
+	If Result(3) = Nothing Then
+		Result(3) = ThisApplication.FileLocations.Workspace
+	ElseIf Right(Result(3), 1) <> "\" Then
+		Result(3) = Result(3) & "\"
+	End If
+
+	If Result(7) <> Nothing Then
+		If Right(Result(7), 1) <> "\" Then Result(7) = Result(7) & "\" ' Ensure last character of path is \
+		If System.IO.Directory.Exists(Result(7)) = False Then
+			ContinueProcess = MessageBox.Show("File Copy Directory was not found, do you want to create it?", "Directory not found", MessageBoxButtons.YesNo)
+			If ContinueProcess = vbYes Then
+				Try
+					System.IO.Directory.CreateDirectory(Result(7))
+				Catch
+					ContinueProcess = MessageBox.Show("Directory creation failed, do you want to continue processing without copying files?", "Directory creation failed", MessageBoxButtons.YesNo)
+					If ContinueProcess = vbNo Then
+						MessageBox.Show("Process will end, no files have been modified")
+						Result(0) = "End Process"
+					Else
+						Result(7) = Nothing
+					End If
+				End Try
+			Else
+				ContinueProcess = MessageBox.Show("Do you want to continue processing without copying files?", "Directory not created", MessageBoxButtons.YesNo)
+				If ContinueProcess = vbNo Then
+					MessageBox.Show("Process will end, no files have been modified")
+					Result(0) = "End Process"
+				Else
+					Result(7) = Nothing
+				End If
+			End If
+		End If
+	End If
+	
+	If Result(8) <> Nothing Then
+		If System.IO.File.Exists(Result(8)) = False Then
+			Result(8) = Nothing
+			ContinueProcess = MessageBox.Show("Pre-Process Code Path was not found, do you want to continue the process?", "Code path not found", MessageBoxButtons.YesNo)
+			If ContinueProcess = vbNo Then
+				MessageBox.Show("Process will end, no files have been modified")
+				Result(0) = "End Process"
+			End If
+		End If
+	End If
+
+	Return Result
+
+End Function
+
+Sub OpenExcelFile(FilePath As String)
+	Dim ExcelApplication = CreateObject("Excel.Application")
+	Dim OpenExcelFile = ExcelApplication.Workbooks.Open(FilePath)
+	ExcelApplication.Application.Visible = True
+End Sub
+
+Sub ExcelSetCellColors(FilePath As String, WorkSheet As String, CellReferences() As String, ColorIndexNumber As Integer)
+	' Color Index Numbers - see https://analysistabs.com/excel-vba/colorindex/ for full list
+	' 1 = Black			' 2 = White		' 3 = Red		' 4 = Green
+	' 5 = Blue			' 6 = Yellow	' 7 = Magenta	' 8 = Cyan
+	' -4105 = Automatic	' -4142 = None
+
+	Dim CellCount As Integer = CellReferences.Count
+	Dim ExcelApplication As Object = CreateObject("Excel.Application")
+	ExcelApplication.Application.Visible = False
+	Dim ExcelWorkbook = ExcelApplication.Workbooks.Open(FilePath)
+	Dim ExcelWorksheet = ExcelWorkbook.Worksheets(WorkSheet) ' This command puts out the right worksheet
+
+	For i = 0 To CellCount - 1
+		If CellReferences(i) <> Nothing Then
+			With ExcelApplication
+				' This command does not work if the worksheet is protected, even if the individual cells are NOT locked
+				ExcelWorksheet.Range(CellReferences(i)).Interior.ColorIndex = ColorIndexNumber
+			End With
+		Else
+			Exit For
+		End If
+	Next
+
+	ExcelWorkbook.Save
+	ExcelWorkbook.Close
+	ExcelApplication.Quit
+End Sub
+
+Sub ExcelSetDateFormat(FilePath As String, WorkSheet As String, CellReferences() As String)
+	Dim CellCount As Integer = CellReferences.Count
+	Dim ExcelApplication As Object = CreateObject("Excel.Application")
+	ExcelApplication.Application.Visible = False
+	Dim ExcelWorkbook = ExcelApplication.Workbooks.Open(FilePath)
+	Dim ExcelWorksheet = ExcelWorkbook.Worksheets(WorkSheet) ' This command puts out the right worksheet
+
+	For i = 0 To CellCount - 1
+		If CellReferences(i) <> Nothing Then
+			With ExcelApplication
+				' This command does not work if the worksheet is protected, even if the individual cells are NOT locked
+				ExcelWorksheet.Range(CellReferences(i)).NumberFormat = "yyyy-mm-dd;@"
+			End With
+		Else
+			Exit For
+		End If
+	Next
+
+	ExcelWorkbook.Save
+	ExcelWorkbook.Close
+	ExcelApplication.Quit
+
+End Sub
+
+Function GetColumnLetter(ColumnNumber As Integer) As String
+	Dim a As Integer = ColumnNumber
+	Dim b As Integer
+	Dim ColumnLetter As String = Nothing
+	Do While ColumnNumber > 0
+		a = Int((ColumnNumber - 1) / 26)
+		b = (ColumnNumber - 1) Mod 26
+		ColumnLetter = Chr(b + 65) & ColumnLetter
+		ColumnNumber = a
+	Loop
+	Return ColumnLetter
+End Function
+
+Function IsFileReadOnly(FullFilePath As String) As Boolean
+	Dim IsReadOnly As Boolean
+	Dim oFile As System.IO.FileInfo
+	oFile = New System.IO.FileInfo(FullFilePath)
+	IsReadOnly = oFile.IsReadOnly
+	Return IsReadOnly
+End Function
+
+Sub MakeFileWriteable(FullFilePath As String)
+	Dim oFile As System.IO.FileInfo
+	oFile = New System.IO.FileInfo(FullFilePath)
+	oFile.IsReadOnly = False
+End Sub
+
+Function FindFullFilePath(TargetPath As String, FileName As String, SearchPath As String, VaultSearch As Boolean) As String
+	Dim Result As String = Nothing
+	Dim TargetFullFilePath As String = TargetPath & FileName
+	Dim FoundFullFilePath As String = Nothing
+	Dim FileFoundInVault As Boolean = False
+	If System.IO.File.Exists(TargetFullFilePath) Then ' See if file is at Target Path
+		Result = TargetFullFilePath
+	Else
+		Dim FoundFileNames() As String = System.IO.Directory.GetFiles(SearchPath, FileName, System.IO.SearchOption.AllDirectories)
+		If FoundFileNames.Count > 0
+			FoundFullFilePath = FoundFileNames(0) ' Will only return first file found
+		End If
+		If FoundFullFilePath <> Nothing Then ' If the file is found, set the drawing file path to the found path
+			Result = FoundFullFilePath
+		ElseIf VaultSearch Then
+			' FileFoundInVault = ??? ' Search the vault for the file (has to wait until Inventor 2024)
+			' FoundFullFilePath = ???
+			' IF FileFoundInVault THEN
+			' 	??? ' Get file from vault
+			'	Result = FoundFullFilePath
+			' Else
+			Result = Nothing
+			' End If
+		Else
+			Result = Nothing
+		End If
+	End If
+	Return Result
+End Function
+
+Function GetExistingProperty(TargetDocument As Document, PropertyName As String) As Inventor.Property
+	Dim Result As Inventor.Property = Nothing
+
+	Dim InternalName As String = Nothing
+	Dim InputNameList() As String = {"Checked Date", "Creation Date", "Design State", "Eng. Approved By", "Eng. Approved Date", "Estimated Cost", "Mfg. Approved By", "Mfg. Approved Date", "Status", "WEB Link" }
+	Dim InternalNameList() As String = {"Date Checked", "Creation Time", "Design Status", "Engr Approved By", "Engr Date Approved", "Cost", "Mfg Approved By", "Mfg Date Approved", "User Status", "Catalog Web Link" }
+	Dim NameMatchFound As Boolean = False
+	Dim InternalNameIndex As Integer
+	Dim NameCount As Integer = InputNameList.Length
+
+	Try
+		InternalNameIndex = Array.IndexOf(InputNameList, PropertyName)
+		InternalName = InternalNameList(InternalNameIndex)
+	Catch
+		InternalName = PropertyName
+	End Try
+
+	Try
+		Result = TargetDocument.PropertySets.Item(“Design Tracking Properties”).Item(InternalName)
+	Catch
+		Try
+			Result = TargetDocument.PropertySets.Item(“Inventor Summary Information”).Item(InternalName)
+		Catch
+			Try
+				Result = TargetDocument.PropertySets.Item(“Inventor Document Summary Information”).Item(InternalName)
+			Catch
+				Try
+					Result = TargetDocument.PropertySets.Item("Inventor User Defined Properties").Item(InternalName)
+				Catch
+					Result = Nothing
+				End Try
+			End Try
+		End Try
+	End Try
+
+	Return Result
+
+End Function
+
+Sub ChangeBooleanCustomProperty(TargetDocument As Document, PropertyName As String, PropertyValue As Boolean, AddPropertyIfMissing As Boolean)
+	' Changes the named True/False custom property in the target document to the specified value.
+	' If the property does not exist, or is not a Boolean, it will be created if the input AddPropertyIfMissing = True
+	Dim TargetCustomProperties As PropertySet = TargetDocument.PropertySets.Item("Inventor User Defined Properties")
+	Dim PropertyExists As Boolean
+
+	Try
+		TargetCustomProperties.Item(PropertyName).Value = PropertyValue
+		PropertyExists = True
+	Catch
+		PropertyExists = False
+	End Try
+
+	If AddPropertyIfMissing And Not PropertyExists Then
+		Try
+			TargetCustomProperties.Item(PropertyName).Delete
+		Catch
+			' If Delete causes an error, it typically means the property does not exist
+		End Try
+		Try
+			TargetCustomProperties.Add(PropertyValue, PropertyName)
+		Catch
+			' If creation fails, do nothing
+		End Try
+	End If
+End Sub
+
+Sub ChangeNumberCustomProperty(TargetDocument As Document, PropertyName As String, PropertyValue As Double, AddPropertyIfMissing As Boolean)
+	' Changes the named True/False custom property in the target document to the specified value.
+	' If the property does not exist, or is not a number, it will be created if the input AddPropertyIfMissing = True
+	Dim TargetCustomProperties As PropertySet = TargetDocument.PropertySets.Item("Inventor User Defined Properties")
+	Dim PropertyExists As Boolean
+
+	Try
+		TargetCustomProperties.Item(PropertyName).Value = PropertyValue
+		PropertyExists = True
+	Catch
+		PropertyExists = False
+	End Try
+
+	If AddPropertyIfMissing And Not PropertyExists Then
+		Try
+			TargetCustomProperties.Item(PropertyName).Delete
+		Catch
+			' If Delete causes an error, it typically means the property does not exist
+		End Try
+		Try
+			TargetCustomProperties.Add(PropertyValue, PropertyName)
+		Catch
+			' If creation fails, do nothing
+		End Try
+	End If
+End Sub
+
+Sub ChangeTextCustomProperty(TargetDocument As Document, PropertyName As String, PropertyValue As String, AddPropertyIfMissing As Boolean)
+	Dim TargetCustomProperties As PropertySet = TargetDocument.PropertySets.Item("Inventor User Defined Properties")
+	Dim PropertyExists As Boolean = False
+
+	Try
+		TargetCustomProperties.Item(PropertyName).Value = PropertyValue
+		PropertyExists = True
+	Catch
+		PropertyExists = False
+	End Try
+
+	If AddPropertyIfMissing And Not PropertyExists Then
+		Try
+			TargetCustomProperties.Item(PropertyName).Delete
+		Catch
+			' If Delete causes an error, it typically means the property does not exist
+		End Try
+		Try
+			TargetCustomProperties.Add(PropertyValue, PropertyName)
+		Catch
+			' If creation fails, do nothing
+		End Try
+	End If
+End Sub
+
+Sub ChangeDateCustomProperty(TargetDocument As Document, PropertyName As String, PropertyValue As Date, AddPropertyIfMissing As Boolean)
+	Dim TargetCustomProperties As PropertySet = TargetDocument.PropertySets.Item("Inventor User Defined Properties")
+	Dim PropertyExists As Boolean = False
+
+	Try
+		TargetCustomProperties.Item(PropertyName).Value = PropertyValue
+		PropertyExists = True
+	Catch
+		PropertyExists = False
+	End Try
+
+	If AddPropertyIfMissing And Not PropertyExists Then
+		Try
+			TargetCustomProperties.Item(PropertyName).Delete
+		Catch
+			' If Delete causes an error, it typically means the property does not exist
+		End Try
+		Try
+			TargetCustomProperties.Add(PropertyValue, PropertyName)
+		Catch
+			' If creation fails, do nothing
+		End Try
+	End If
+End Sub
+
+Function DesignStateIntegertoString(PropertyValue As Integer) As String
+	Dim Result As String
+
+	If PropertyValue = 1 Then
+		Result = "WorkInProcess"
+	ElseIf PropertyValue = 2 Then
+		Result = "Pending"
+	ElseIf PropertyValue = 3 Then
+		Result = "Released"
+	Else
+		Result = "Invalid Value"
+	End If
+
+	Return Result
+
+End Function
+
+Function DesignStateStringtoInteger(PropertyValue As String) As Integer
+	Dim Result As Integer
+
+	If PropertyValue = "WorkInProcess" Or PropertyValue = "1" Then
+		Result = 1
+	ElseIf PropertyValue = "Pending" Or PropertyValue = "2" Then
+		Result = 2
+	ElseIf PropertyValue = "Released" Or PropertyValue = "3" Then
+		Result = 3
+	Else
+		Result = 0
+	End If
+
+	Return Result
+
+End Function
+
+' ----- VERSION HISTORY -----
+' VERSION	BY				DATE			DESCRIPTION
+' 1.00		Glen Landreth	8-Sep-2023		Original Release
+' 1.01		Glen Landreth	14-Sep-2023		Updated data file version to 1.01, with settings moved to a separate worksheet " Settings "
+'											Changed to search for any file not found, using the file path entered, or the default if none was provided
+'											Now changes cell colors on output files to indicate
+'											Added options to open processed files
+'											Added option to create assembly file that contains processes components
+' 1.02		Glen Landreth	14-Sep-2023		Updated file open option to use found file list instead of output list
+' 1.03		Glen Landreth	27-Sep-2023		Added commands to mark files as with read errors if the file is found but cannot be opened (loss of connection or corrupt files)
+'							27-Sep-2023		Save data file every 10 files to minimize data loss on process crash
+'							27-Sep-2023		Moved all file searching commands into function
+' 1.04		Glen Landreth	16-Oct-2023		Improved performance of assembly creation
+'											Added Error Handling for parts that cannot be added when doing assembly creation
+'											Added Error Handling for file open
+'											If unsupported file open option is chosen, only send message once and skip opening all of the files
+' 1.05		Glen Landreth	20-Dec-2023		Updated required data file version to 1.02
+'											Added option to copy files to another folder after process is complete
+'											Added option to run external iLogic code before processing file
+'											Process can now read / write parameter values
+'											Allowed default search path to be empty, which then makes the search path the active project workspace.
+'											Added option to save files twice before reading properties
+' 1.06		Glen Landreth	7-Feb-2024		Added support for selected physical properties (Area, Mass, Material, Volume, Sheet Metal Style)
+'											Added option to skip output file color coding for large output (>250 cells) to improve performance
+'											Disable User Interface during process run to prevent interference
+' 1.07		Glen Landreth	8-Feb-2024		Resolved Crashes caused Missing .DisplayName when looking up document material
+'											Added units of measure to Mass, Area, and Volume outputs using the document units of measure
+'											Changed required template version to 1.03
+' 1.08		Glen Landreth	10-Feb-2024		Added protections for crashes on file read errors preventing
+' 1.09		Glen Landreth	18-Mar-2024		Added trap for early read errors, typically caused from file loading issues from network drives
+' 1.10		Glen Landreth	12-Apr-2024		Improved timed message suppression
+' 1.11		Glen Landreth	10-Jul-2024		Added support for moment of inertia physical properties
+' 1.12		Glen Landreth	21-Aug-2024		Bug fix to end transactions before exiting main sub when errors are detected
+' 1.13		Glen Landreth	2-Dec-2024		Added support for GeneralSaveWrapper option to force full automation process on next save
+' 1.14		Glen Landreth	21-Jan-2025		Bug fix for when iProperties are in text or Number format, but are supposed to be in Yes/No format
+' 1.15		Glen Landreth	24-Jan-2025		Bug fix when getting properties from documents that are not parts
+' 1.16		Glen Landreth	5-Feb-2025		Changed transaction end code to be for current transaction to better end transactions from sub codes.
+' 1.17		Glen Landreth	14-Feb-2025		Further improvements to try ending hung sub-transactions
+' 2.00		Glen Landreth	31-Mar-2025		Restructured code
+'											Updated required data file version to 1.06
+'											Added ability to modify parameter name, expression, and comments
+'											Added on screen status message to show current file, files remaining, elapsed time, estimated completion time
+'											Added reporting of quantity of errors on part files
+'											Added ability to change name & format of custom iProperties
+'											Adjusted output sheet for number format value to be number format instead of text
+'											Added ability to delete custom iProperties & unused user parameters
+'											Added ability to add/change/delete model notes
+'											Added reporting of lists of files with various errors
+'											Added ability to handle date iProperties
+'											Added ability to handle iProperty Design State
+'											Added support for user selectable QPA for each component added to an assembly.
+'											Components in created assemblies are now spaced out in columns and rows
+'											Offer to create the copy directory if it does not exist
+'											Updated Assembly template to use workspace relative path instead of C:\Vault2022\...
+'											Added option to continue with additional operations such as file open and assembly creation when no properties have been added to the data file
+' 2.01		Glen Landreth	18-Apr-2025		Updated code to support data template versions 1.06 to 1.07
+'											To improve performance, implemented larger file data file save increment when no pre-save and no external code are required.
+'											Error messages when trying to change properties on read only files have been updated to include the current value in the file
+'											Corrected bug when checking if custom properties are exported parameters that caused all values from non-part documents to show as not being found
+'											Added messages when saving data file to explain the long pauses
+' 2.02		Glen Landreth	22-Apr-2025		Corrected name of TimedMessageDuration iProperty in the ProcessAndSaveFile subroutine.
+' 2.03		Glen Landreth	1-May-2025		Now detects when non-local file path are found in the data set, and ensures smaller increments between data file saves to minimize potential data loss
+'											Process now does on screen messaging in a temporary document to prevent dirtying the active document.
+'											Added support for counting errors in assembly features
+'											Added try-catch around feature error checking to prevent process crashes with unstable network connections
+' 2.04		Glen Landreth	3-Jun-2025		Process now closes the temporary messaging document when the process ends itself early
+'											Corrected bug causing crashes when running external iLogic code on documents that are not parts or assemblies
+'											Changed external code call to run in the context of the file the code is being run upon instead of the file visible when iPropertyManager was started
+' 2.05		Glen Landreth	4-Jun-2025		User is now asked if they want to disable color coding regardless of the size of the data set
+' 2.06		Muhanad Hilaneh	5-Jun-2025		Fixed a bug that made the process always try to run external iLogic rule even if the user did not want to which made it crash
+' 2.07		Muhanad Hilaneh	5-Jun-2025		Further fixed a bug that made the process always try to run external iLogic rule even if the user did not want to which made it crash

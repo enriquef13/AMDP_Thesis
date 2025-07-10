@@ -56,7 +56,8 @@ Sub Main()
     Next
 
 	Try
-	    Dim csvPath As String = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(doc.FullFileName), "JointPairs_" & DateTime.Now.ToString("yyyyMMdd_HHmmss") & ".csv")
+        Dim docNameNoExt As String = System.IO.Path.GetFileNameWithoutExtension(doc.FullDocumentName)
+        Dim csvPath As String = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(doc.FullFileName), docNameNoExt & "_JointPairs_" & DateTime.Now.ToString("yyyyMMdd_HHmmss") & ".csv")
 	    Dim csvContent As New System.Text.StringBuilder()
 	    
 	    csvContent.AppendLine("Part A,Part B,Joint Length Inches")

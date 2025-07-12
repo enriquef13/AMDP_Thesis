@@ -83,7 +83,8 @@ class Capabilities:
         self.TL_max_length = 334.65
         self.TL_max_diagonal_width = 7.87
         self.TL_max_mass_per_length = 7.348
-        self.TL_max_width = round(3*((self.TL_max_diagonal_width**2 / 2) ** 0.5), 2)
+        self.TL_max_width = 13.3 # Min constraint (conservative - assuming two 3" flanges)
+        # self.TL_max_width = round(4*((self.TL_max_diagonal_width**2 / 2) ** 0.5), 2) # Max constraint (based on diagonal width with 4 flanges)
 
     def _get_constraints(self, min, max, n_points):
         # Create grid for all
@@ -337,8 +338,8 @@ class Capabilities:
         plt.ylim(0, 340)
 
         plt.legend(loc='upper right')
-    
-    def add_part_sets(self, part_sets_df):
+
+    def add_part_sets(self, part_sets_df, get_stats=False):
         """Plot part sets on the current figure"""
         
         def process_material(material_str):
@@ -347,9 +348,12 @@ class Capabilities:
         # Define a list of colors to use for different part sets
         colors = ['darkblue', 'darkorange', 'darkgreen', 'darkred', 'purple', 'brown', 'teal', 'magenta', 'black']
         markers = ['o', 's', '^', 'D', 'v', '>', '<', 'p']
+
+        part_set_stats = []
         
         for i, part_set_df in enumerate(part_sets_df):
             part_set_df['Material'] = part_set_df['NCx_Material'].apply(process_material)
+            part_set_name = part_set_df['Part Set'].iloc[0]
             
             # Filter for current gauge and material combination
             current_parts = part_set_df[
@@ -360,23 +364,77 @@ class Capabilities:
             if not current_parts.empty:
                 x_coords = pd.to_numeric(current_parts['CostData FlatWidthInches'], errors='coerce')
                 y_coords = pd.to_numeric(current_parts['CostData FlatLengthInches'], errors='coerce')
-                
+                part_weights = pd.to_numeric(current_parts['Part Weight Times Qty'], errors='coerce')
+
                 # Remove NaN values
                 valid_coords = ~(pd.isna(x_coords) | pd.isna(y_coords))
                 x_coords = x_coords[valid_coords]
                 y_coords = y_coords[valid_coords]
-                
+                part_weights = part_weights[valid_coords]
+
                 if len(x_coords) > 0:
+                    if get_stats:
+                        region_stats = self._analyze_part_set_region_distribution(x_coords, y_coords, part_set_name, part_weights)
+                        print(pd.DataFrame(region_stats))
+                        part_set_stats.append(region_stats)
+
                     # Use the color and marker based on the index i (cycling through the colors/markers if needed)
                     color = colors[i % len(colors)]
                     marker = markers[i % len(markers)]
                     
                     plt.scatter(x_coords, y_coords, c=color, marker=marker, s=60, 
-                                label=f'{part_set_df['Part Set'].iloc[0]} - {len(x_coords)} parts', alpha=0.8, edgecolors='white')
+                                label=f'{part_set_name} - {len(x_coords)} unique parts', alpha=0.8, edgecolors='white')
         
         plt.legend(loc='upper right')
         plt.show()
 
+        return part_set_stats if get_stats else None
+
+    def _analyze_part_set_region_distribution(self, x_coords, y_coords, part_set_name, part_weights):
+        unique_part_counts = {'TL': 0, 'MPB': 0, 'APB': 0}
+        weight_counts = {'TL': 0, 'MPB': 0, 'APB': 0}
+        
+        region_stats = {}
+        total_parts = len(x_coords)
+        total_weight = float(part_weights.sum())
+
+        # Check each part against manufacturing regions
+        for idx, (x, y) in enumerate(zip(x_coords, y_coords)):
+            # Find closest grid indices
+            x_idx = np.argmin(np.abs(self.x - x))
+            y_idx = np.argmin(np.abs(self.y - y))
+            part_weight = float(part_weights.iloc[idx])
+            
+            # Check which regions this part can be manufactured in
+            feasible_regions = []
+            
+            if self.TL_feasible[y_idx, x_idx]:
+                feasible_regions.append('TL')
+            if self.MPB_feasible[y_idx, x_idx]:
+                feasible_regions.append('MPB')
+            if self.gauge >= 10 and self.APB_feasible[y_idx, x_idx]:
+                feasible_regions.append('APB')
+            
+            if 'TL' in feasible_regions:
+                classification = 'TL'
+            elif 'APB' in feasible_regions:
+                classification = 'APB'
+            else:
+                classification = 'MPB'
+        
+            unique_part_counts[classification] += 1
+            weight_counts[classification] += part_weight
+
+        # Store statistics
+        region_stats[part_set_name] = {
+            'total_parts': total_parts,
+            'unique_part_counts': {k: round(v, 2) for k, v in unique_part_counts.items()},
+            'total_weight': round(total_weight, 2),
+            'weight_counts': {k: round(v, 2) for k, v in weight_counts.items()}
+        }
+
+        return region_stats
+        
     def plot_individual_cost_heatmap(self, excel_path, start_row=150, fastener_spacing=3, bolt_diameter=0.3125, n_bins=100):
         self._get_constraints(-1, 341, 69)
         self._get_region_inputs(fastener_spacing)

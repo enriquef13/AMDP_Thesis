@@ -18,41 +18,9 @@ Plate bending formulas: https://jackson.engr.tamu.edu/wp-content/uploads/sites/2
 """
 
 import numpy as np
+from general_data import MATERIALS, GAUGES, BETA_FLOOR, ALPHA_FLOOR, BETA_WALL, GAMMA_WALL, WIND_PRESSURE_RATINGS
 
-# Material Properties (SST and GLV)
-MATERIALS = {
-    'SST': {"yield_strength": 35000, "safety_factor": 2.5, "elastic_mod": 28000000},  # psi
-    'GLV': {"yield_strength": 33000, "safety_factor": 2.5, "elastic_mod": 29000000}   # psi
-}
-
-GAUGES = {
-    'SST': {0.047: 18, 0.059: 16, 0.075: 14, 0.101: 12, 0.128: 10, 0.158: 8},
-    'GLV': {0.042: 18, 0.053: 16, 0.066: 14, 0.096: 12, 0.129: 10, 0.157: 8}
-}
-
-BETA_FLOOR = {
-    1.0: 0.3078, 1.2: 0.3834, 1.4: 0.4356, 1.6: 0.4680, 1.8: 0.4872, 2.0: 0.4974, 3.0: 0.5000
-}
-
-ALPHA_FLOOR = {
-    1.0: 0.0138, 1.2: 0.0188, 1.4: 0.0226, 1.6: 0.0251, 1.8: 0.0267, 2.0: 0.0277, 3.0: 0.0284
-}
-
-BETA_WALL = {
-    0.25: 0.037, 0.50: 0.120, 0.75: 0.212, 1.0: 0.321, 1.5: 0.523, 2.0: 0.677, 3.0: 0.866
-}
-
-GAMMA_WALL = {
-    0.25: 0.159, 0.5: 0.275, 0.75: 0.354, 1.0: 0.413, 1.5: 0.482, 2.0: 0.509, 3.0: 0.517
-}
-
-WIND_PRESSURE_RATINGS = {
-    'NTC': 40,  # psf
-    'TC': 45,   # psf
-    'TCM': 60   # psf
-}
-
-def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", material="SST", display=False):
+def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", material="SST-M3", display=False):
     """
     Calculate required sheet thickness for a wall.
 
@@ -60,13 +28,12 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", 
     height_in: Height of the wall (inches).
     water_height_in: Height of water inside (inches).
     wind_zone: NTC (Non-Tropical Cyclone), TC (Tropical Cyclone), or TCM (Tropical Cyclone Missile) for wind pressure rating.
-    material: "SST" or "GLV".
-    consider_channels: Boolean, whether channels will be used.
+    material: "SST-M3" or "GLV-M5".
     """
 
     # Calculate allowable stress based on material properties
     props = MATERIALS[material]
-    S_allow = props["yield_strength"] / props["safety_factor"]  # psi
+    S_allow = props["yield_strength"] / 2.5  # psi (safety factor of 2.5)
 
     # Obtain wind pressure rating and convert to psi
     wind_pressure_psi = (WIND_PRESSURE_RATINGS[wind_zone] / 144) * 1.15  # psi (1.15 is a safety factor for wind pressure)
@@ -100,15 +67,16 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", 
                        key=lambda x: abs(x - t_required_in) if x >= t_required_in else float('inf')
                       ) if not thickness_warning else max(gauge_dict.keys())
     
-    if thickness_warning:
-        print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
-    else:
-        print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
+    if display:
+        if thickness_warning:
+            print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
+        else:
+            print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
 
-    return t_closest_in, gauge_dict[t_closest_in]
+    return gauge_dict[t_closest_in]
 
 
-def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST", display=False):
+def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3", display=False):
     """
     Calculate required thickness for a floor panel.
 
@@ -157,28 +125,29 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST", 
                        key=lambda x: abs(x - t_required_in) if x >= t_required_in else float('inf')
                       ) if not thickness_warning else max(gauge_dict.keys())
     
-    if thickness_warning:
-        print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
-    else:
-        print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
+    if display:
+        if thickness_warning:
+            print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
+        else:
+            print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
 
-    return t_closest_in, gauge_dict[t_closest_in]
+    return gauge_dict[t_closest_in]
 
-calculate_wall_gauge(
-    width_in=138,              
-    height_in=27,             
-    water_height_in=10,       
-    wind_zone="TC",
-    material="SST",
-    display=False
-)
+# calculate_wall_gauge(
+#     width_in=138,              
+#     height_in=27,             
+#     water_height_in=10,       
+#     wind_zone="TC",
+#     material="SST-M3",
+#     display=False
+# )
 
-print(" ")
+# print(" ")
 
-calculate_floor_gauge(
-    width_in=53,              
-    length_in=33,             
-    water_height_in=10,     
-    material="SST",
-    display=False
-)
+# calculate_floor_gauge(
+#     width_in=53,              
+#     length_in=33,             
+#     water_height_in=10,     
+#     material="SST-M3",
+#     display=False
+# )

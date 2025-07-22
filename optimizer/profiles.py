@@ -2,13 +2,10 @@ import general_data as gd
 import numpy as np
 
 class Profile:
-    def __init__(self, name, qty, material, gauge, length, profile_type):
-        self.name = name
-        self.qty = qty
+    def __init__(self, material, gauge, profile_type):
         self.material = material
         self.gauge = gauge
         self.profile_type = profile_type
-        self.length = length
         self.profiles = {
             'C': {'h': 3.6875, 'b': 3, 'f': 0},
             'Rectangular': {'h': 4, 'b': 3.25, 'f': 0},

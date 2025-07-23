@@ -6,8 +6,10 @@ Generates structurally-feasible configurations of nodes and members within speci
 import random
 import numpy as np
 from structural_frames import calculate_wall_frame_structural, distribute_load
+from capabilities import Capabilities
 from profiles import Profile
 import config as cfg
+import general_data as gd
 
 def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
     """
@@ -125,13 +127,13 @@ def _get_member_range(n_nodes):
             add -= 1
     return range(min_members, max_members//2 + 3)
 
-display = True
-n_nodes = 12
-frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=False)
-c_channel = Profile('SST-M3', 8, 'Rectangular')
-for i, frame in enumerate(frames):
-    try:
-        q_x, q_y = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
-        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q_x/1000, display=display)
-    except Exception as e:
-        print(f"Error processing frame {i + 1}: {e}")
+# display = True
+# n_nodes = 12
+# frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=False)
+# c_channel = Profile('SST-M3', 8, 'Rectangular')
+# for i, frame in enumerate(frames):
+#     try:
+#         q_x, q_y = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
+#         calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q_x/1000, display=display)
+#     except Exception as e:
+#         print(f"Error processing frame {i + 1}: {e}")

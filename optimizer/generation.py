@@ -5,8 +5,9 @@ Generates structurally-feasible configurations of nodes and members within speci
 
 import random
 import numpy as np
-from structural_frames import calculate_wall_frame_structural
+from structural_frames import calculate_wall_frame_structural, distribute_load
 from profiles import Profile
+import config as cfg
 
 def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
     """
@@ -15,7 +16,6 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
     """
 
     corner_nodes = {0: [0, 0], 1: [x, 0], 2: [0, y], 3: [x, y]}
-    channel_types = ['C', 'Rectangular', 'Hat', 'Double C']
 
     node_range = range(min_nodes, max_nodes + 1)
     frames = []
@@ -23,25 +23,25 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
     while len(frames) < n_frames:
         # Randomly select the number of nodes and members for this frame
         num_nodes = random.choice(node_range)
-        num_members = random.choice(_get_member_range(num_nodes))
-        print(f"Generating frame with {num_nodes} nodes and {num_members} members.")
-        num_nodes -= len(corner_nodes)  # Adjust for corner nodes
+        num_remaining_nodes = num_nodes - len(corner_nodes)  # Adjust for corner nodes
 
-        # Start with corner nodes
+        # Start by adding corner nodes
         nodes = corner_nodes.copy()
-        for i in range(num_nodes):
-            done = False
-            while not done:
-                sel_edge = random.randint(0, 3)  # Select a random edge (0 to 3)
-                if sel_edge == 0: node_pair = [random.randint(0, x), 0]
-                elif sel_edge == 1: node_pair = [x, random.randint(0, y)]
-                elif sel_edge == 2: node_pair = [random.randint(0, x), y]
-                elif sel_edge == 3: node_pair = [0, random.randint(0, y)]
 
-                if node_pair not in nodes.values():
-                    nodes[i + len(corner_nodes)] = node_pair
-                    done = True
-        
+        # Add evenly spaced nodes along the top and bottom edges
+        if num_remaining_nodes > 0: 
+            if num_remaining_nodes % 2 == 0: num_remaining_nodes -= 1  # Ensure odd number of nodes for symmetry
+            num_top_bot_nodes = num_remaining_nodes // 2
+            start_len = len(nodes)
+            for i in range(num_top_bot_nodes):
+                pos_x = x / (num_top_bot_nodes + 1) * (i + 1)
+                nodes[start_len + i] = [pos_x, 0]
+                nodes[start_len + i + num_top_bot_nodes] = [pos_x, y]
+            num_remaining_nodes -= num_top_bot_nodes * 2
+
+        num_members = random.choice(_get_member_range(len(nodes)))
+        print(f"Generating frame with {len(nodes)} nodes and {num_members} members.")
+
         # Sort nodes: top to bottom (ascending y), then left to right (ascending x)
         sorted_nodes = dict(
             sorted(
@@ -54,9 +54,9 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
         left_id_nodes = list(left_nodes.keys())
         right_nodes = {idx: n for idx, n in sorted_nodes.items() if n[0] == x}
         right_id_nodes = list(right_nodes.keys())
-        top_nodes = {idx: n for idx, n in sorted_nodes.items() if n[1] == y and n not in corner_nodes.values()}
+        top_nodes = {idx: n for idx, n in sorted_nodes.items() if n[1] == y}
         top_id_nodes = list(top_nodes.keys())
-        bottom_nodes = {idx: n for idx, n in sorted_nodes.items() if n[1] == 0 and n not in corner_nodes.values()}
+        bottom_nodes = {idx: n for idx, n in sorted_nodes.items() if n[1] == 0}
         bottom_id_nodes = list(bottom_nodes.keys())
 
         if display:
@@ -67,13 +67,12 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
             print(f"Top Nodes: {top_nodes}")
             print(f"Bottom Nodes: {bottom_nodes}")
 
-        left_members = [[left_id_nodes[i], left_id_nodes[i+1]] for i in range(len(left_id_nodes) - 1)]
-        right_members = [[right_id_nodes[i], right_id_nodes[i+1]] for i in range(len(right_id_nodes) - 1)]
-        member_pairs = left_members + right_members
-        num_members -= len(member_pairs)
-        print(f"Initial Member Pairs: {member_pairs}")
+        vertical_pairs = [[bottom_id_nodes[i], top_id_nodes[i]] for i in range(len(bottom_id_nodes))]
+        num_members -= len(vertical_pairs)
+        print(f"Initial Vertical Pairs: {vertical_pairs}")
         print("")
 
+        member_pairs = vertical_pairs.copy()
         if num_members < 0:
             print("Not enough members for the given nodes. Skipping this frame.")
             continue
@@ -87,26 +86,6 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
         all_node_indices = set(sorted_nodes.keys())
         remaining_node_indices = all_node_indices - used_nodes
         remaining_nodes = {idx: sorted_nodes[idx] for idx in remaining_node_indices}
-
-        if len(remaining_nodes) > num_members or len(remaining_nodes) <= 0:
-            print("Not enough members for the remaining nodes. Skipping this frame.")
-            continue
-        
-        done = False
-        n_joints_middle = int(np.ceil(len(remaining_nodes) / 2))
-        while not done:
-            for node in remaining_nodes.keys():
-                sel_node = random.choice(list(nodes.keys()))
-                if sel_node == node: 
-                    continue
-                pair = [sel_node, node]
-                if not _check_members(pair, member_pairs):
-                    member_pairs.append(pair)
-                    num_members -= 1
-                    n_joints_middle -= 1
-                    if n_joints_middle <= 0:
-                        done = True
-                        break
         
         done = False
         while not done:
@@ -176,10 +155,12 @@ def _get_member_range(n_nodes):
             add -= 1
     return range(min_members, max_members//2 + 3)
 
-frames = generate_frames(10, 5, n_frames=10, min_nodes=4, max_nodes=12, display=False)
-c_channel = Profile('GLV-M5', 14, 'C')
+display = True
+frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=10, min_nodes=20, max_nodes=40, display=display)
+c_channel = Profile('SST-M3', 8, 'Rectangular')
 for i, frame in enumerate(frames):
-    try: 
-        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=10000000, display=True)
+    try:
+        q_x, q_y = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
+        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q_x, display=display)
     except Exception as e:
         print(f"Error processing frame {i + 1}: {e}")

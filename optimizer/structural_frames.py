@@ -16,6 +16,8 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
         channel: Profile object representing the channel section.
         q: Uniform distributed load applied to the frame (lbf/in).
     """
+
+    print(q)
     E = gd.MATERIALS[channel.material]["youngs_mod"]       # Young's modulus (psi)
     Fy = gd.MATERIALS[channel.material]["yield_strength"]  # Yield strength (psi)
     A = channel.A  # Cross-sectional area (in²)
@@ -266,7 +268,7 @@ def check_nodes(x, z, nodes):
 #     1: [25, 0],
 #     2: [53, 0],
 #     3: corner_nodes[0],
-#     4: [25, 20],
+#     4: [cfg.x_in//2, 20],
 #     5: corner_nodes[1]
 # }
 

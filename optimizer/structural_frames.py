@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np # type: ignore
 import pandas as pd # type: ignore
 from scipy.linalg import solve # type: ignore
 import matplotlib.pyplot as plt # type: ignore
@@ -67,7 +67,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
     # === Apply Boundary Conditions ===
     fixed_dofs = []
     for node_id in nodes:
-        if nodes[node_id][1] == 0 or nodes[node_id][0] in [0, max(n[0] for n in nodes.values())]:
+        if nodes[node_id][1] == 0:  # Only fix nodes on the bottom edge (y = 0)
             fixed_dofs += [3*node_id, 3*node_id+1, 3*node_id+2]
 
     free_dofs = [i for i in range(total_dof) if i not in fixed_dofs]

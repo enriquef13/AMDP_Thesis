@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np # type: ignore
 import pandas as pd # type: ignore
 from scipy.linalg import solve # type: ignore
 import matplotlib.pyplot as plt # type: ignore

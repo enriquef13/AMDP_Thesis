@@ -6,8 +6,10 @@ Generates structurally-feasible configurations of nodes and members within speci
 import random
 import numpy as np
 from structural_frames import calculate_wall_frame_structural, distribute_load
+from capabilities import Capabilities
 from profiles import Profile
 import config as cfg
+import general_data as gd
 
 def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
     """

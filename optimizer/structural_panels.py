@@ -136,22 +136,22 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
     return gauge_dict[t_closest_in]
 
 
-display = True
-calculate_wall_gauge(
-    width_in=13,              
-    height_in=z_in,             
-    water_height_in=10,       
-    wind_zone=WIND_NTC,
-    material=SST,
-    display=display
-)
+# display = True
+# calculate_wall_gauge(
+#     width_in=13,              
+#     height_in=z_in,             
+#     water_height_in=10,       
+#     wind_zone=WIND_NTC,
+#     material=SST,
+#     display=display
+# )
 
-print(" ")
+# print(" ")
 
-calculate_floor_gauge(
-    width_in=50,              
-    length_in=31,             
-    water_height_in=14,     
-    material=SST,
-    display=display
-)
+# calculate_floor_gauge(
+#     width_in=43,              
+#     length_in=30,             
+#     water_height_in=14,     
+#     material=SST,
+#     display=display
+# )

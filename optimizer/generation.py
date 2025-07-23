@@ -21,7 +21,7 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
     frames = []
 
     while len(frames) < n_frames:
-        # Randomly select the number of nodes and members for this frame
+        # Randomly select the number of nodes for this frame
         num_nodes = random.choice(node_range)
         num_remaining_nodes = num_nodes - len(corner_nodes)  # Adjust for corner nodes
 
@@ -59,47 +59,33 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
         bottom_nodes = {idx: n for idx, n in sorted_nodes.items() if n[1] == 0}
         bottom_id_nodes = list(bottom_nodes.keys())
 
-        if display:
-            print(f"Nodes: {nodes}")
-            print("")
-            print(f"Left Nodes: {left_nodes}")
-            print(f"Right Nodes: {right_nodes}")
-            print(f"Top Nodes: {top_nodes}")
-            print(f"Bottom Nodes: {bottom_nodes}")
-
+        member_pairs = []
         vertical_pairs = [[bottom_id_nodes[i], top_id_nodes[i]] for i in range(len(bottom_id_nodes))]
-        num_members -= len(vertical_pairs)
-        print(f"Initial Vertical Pairs: {vertical_pairs}")
-        print("")
+        # horizontal_pairs = [[left_id_nodes[i], right_id_nodes[i]] for i in range(len(left_id_nodes))]
+        # member_pairs = vertical_pairs
+        # print(f"Initial Pairs: {len(member_pairs)}")
 
-        member_pairs = vertical_pairs.copy()
-        if num_members < 0:
-            print("Not enough members for the given nodes. Skipping this frame.")
-            continue
+        # Add diagonal members in all the consecutive node pairs
+        # Identify all possible boxes (4 nodes forming a rectangle)
+        for i, bottom_left in enumerate(bottom_id_nodes[:-1]):
+            for j, top_left in enumerate(top_id_nodes[:-1]):
+                if i < len(bottom_id_nodes) - 1 and j < len(top_id_nodes) - 1:
+                    bottom_right = bottom_id_nodes[i + 1]
+                    top_right = top_id_nodes[j + 1]
 
-        # Get all node indices used in member_pairs
-        used_nodes = set()
-        for pair in member_pairs:
-            used_nodes.update(pair)
-
-        # Find remaining nodes not in member_pairs
-        all_node_indices = set(sorted_nodes.keys())
-        remaining_node_indices = all_node_indices - used_nodes
-        remaining_nodes = {idx: sorted_nodes[idx] for idx in remaining_node_indices}
-        
-        done = False
-        while not done:
-            for node in nodes.keys():
-                sel_node = random.choice(list(nodes.keys()))
-                if sel_node == node:
+                    # Ensure these nodes form a valid rectangle
+                    if (nodes[bottom_left][0] == nodes[top_left][0] and
+                        nodes[bottom_right][0] == nodes[top_right][0] and
+                        nodes[bottom_left][1] == nodes[bottom_right][1] and
+                        nodes[top_left][1] == nodes[top_right][1]):
+                        
+                        # Add diagonal members
+                        member_pairs.append([bottom_left, top_right])  # Diagonal 1
+                        member_pairs.append([bottom_right, top_left])  # Diagonal 2
+                
+                if len(member_pairs) < 0:
+                    print("Not enough members for the given nodes. Skipping this frame.")
                     continue
-                pair = [sel_node, node]
-                if not _check_overlap_members(pair, nodes) and not _check_members(pair, member_pairs):
-                    member_pairs.append(pair)
-                    num_members -= 1
-                    if num_members <= 0:
-                        done = True
-                        break
 
         frames.append([nodes.copy(), member_pairs.copy()])
 
@@ -156,7 +142,7 @@ def _get_member_range(n_nodes):
     return range(min_members, max_members//2 + 3)
 
 display = True
-frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=10, min_nodes=20, max_nodes=40, display=display)
+frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=40, max_nodes=40, display=False)
 c_channel = Profile('SST-M3', 8, 'Rectangular')
 for i, frame in enumerate(frames):
     try:

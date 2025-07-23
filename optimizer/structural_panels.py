@@ -18,7 +18,9 @@ Plate bending formulas: https://jackson.engr.tamu.edu/wp-content/uploads/sites/2
 """
 
 import numpy as np
-from general_data import MATERIALS, GAUGES, BETA_FLOOR, ALPHA_FLOOR, BETA_WALL, GAMMA_WALL, WIND_PRESSURE_RATINGS
+from general_data import MATERIALS, GAUGES, BETA_FLOOR, ALPHA_FLOOR, BETA_WALL, GAMMA_WALL, WIND_PRESSURE_RATINGS, SF
+from general_data import WIND_NTC, WIND_TC, WIND_TCM, SST, GLV
+from config import z_in
 
 def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", material="SST-M3", display=False):
     """
@@ -33,7 +35,7 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", 
 
     # Calculate allowable stress based on material properties
     props = MATERIALS[material]
-    S_allow = props["yield_strength"] / 2.5  # psi (safety factor of 2.5)
+    S_allow = props["yield_strength"] / SF  # psi (safety factor of 2.5)
 
     # Obtain wind pressure rating and convert to psi
     wind_pressure_psi = (WIND_PRESSURE_RATINGS[wind_zone] / 144) * 1.15  # psi (1.15 is a safety factor for wind pressure)
@@ -88,7 +90,7 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
 
     # Obtain allowable stress and elastic modulus
     props = MATERIALS[material]
-    S_allow = props["yield_strength"] / props["safety_factor"]  # psi
+    S_allow = props["yield_strength"] / SF  # psi
     E = props["elastic_mod"]  # psi
 
     # Hydrostatic pressure at bottom of floor (psi)
@@ -133,21 +135,23 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
 
     return gauge_dict[t_closest_in]
 
-# calculate_wall_gauge(
-#     width_in=138,              
-#     height_in=27,             
-#     water_height_in=10,       
-#     wind_zone="TC",
-#     material="SST-M3",
-#     display=False
-# )
 
-# print(" ")
+display = True
+calculate_wall_gauge(
+    width_in=18,              
+    height_in=z_in,             
+    water_height_in=10,       
+    wind_zone=WIND_NTC,
+    material=SST,
+    display=display
+)
 
-# calculate_floor_gauge(
-#     width_in=53,              
-#     length_in=33,             
-#     water_height_in=10,     
-#     material="SST-M3",
-#     display=False
-# )
+print(" ")
+
+calculate_floor_gauge(
+    width_in=53,              
+    length_in=33,             
+    water_height_in=10,     
+    material=SST,
+    display=display
+)

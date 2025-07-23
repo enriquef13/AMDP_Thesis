@@ -17,7 +17,6 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
         q: Uniform distributed load applied to the frame (lbf/in).
     """
 
-    print(q)
     E = gd.MATERIALS[channel.material]["youngs_mod"]       # Young's modulus (psi)
     Fy = gd.MATERIALS[channel.material]["yield_strength"]  # Yield strength (psi)
     A = channel.A  # Cross-sectional area (in²)
@@ -27,7 +26,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
     K = 1.0                             # Effective length factor (pinned-pinned)
     load_factor = 1.5                   # Load factor (LRFD)
     resistance_factor = 0.9             # Resistance factor (LRFD)
-    max_deflection_ratio = 1/360        # Deflection limit
+    max_deflection_ratio = 1/20         # Deflection limit
 
     # Filter out invalid members (non-existent in nodes dictionary)
     members = [m for m in members if m[0] in nodes and m[1] in nodes]

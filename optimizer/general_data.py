@@ -17,6 +17,9 @@ SST = 'SST-M3'
 WALL = 'Wall'
 FLOOR = 'Floor'
 
+# Safety Factor (for yield strength in walls and floors)
+SF = 2.5
+
 MATERIALS = {
     SST: {"yield_strength": 35000, "elastic_mod": 28000000, "youngs_mod": 28000000},  # psi
     GLV: {"yield_strength": 33000, "elastic_mod": 29500000, "youngs_mod": 29500000}  # psi

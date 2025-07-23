@@ -7,4 +7,4 @@ y_in = 33                                       # Shorter dimension in inches
 z_in = 20                                       # Basin height in inches
 water_height_in = 10                            # Water height in inches
 wind_zone = gd.WIND_NTC                         # Wind zone classification (gd.WIND_NTC, gd.WIND_TC, or gd.WIND_TCM)
-top_load = 50                                   # Uniform load on top edges (lbf)
+top_load = 50e10                                   # Uniform load on top edges (lbf)

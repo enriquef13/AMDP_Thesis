@@ -148,7 +148,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
     if display:
         print("\nMaximum internal beam deflections:")
         for i, j in members:
-            max_deflection, _, _ = _evaluate_beam_deflection(i, j, u_global)
+            max_deflection, _, _ = _evaluate_beam_deflection(i, j, u_global, nodes)
             print(f"Member {i}-{j}: Max internal deflection = {max_deflection*1000:.2f} in")
 
         # Display internal forces
@@ -215,7 +215,7 @@ def _frame_stiffness(x1, y1, x2, y2, E, A, I):
 
     return T.T @ k_local @ T, L
 
-def _evaluate_beam_deflection(i, j, u_global, num_points=20):
+def _evaluate_beam_deflection(i, j, u_global, nodes, num_points=20):
     dof_map = [3*i, 3*i+1, 3*i+2, 3*j, 3*j+1, 3*j+2]
     u_elem = u_global[dof_map]
     v_i, theta_i = u_elem[1], u_elem[2]
@@ -239,35 +239,47 @@ def _evaluate_beam_deflection(i, j, u_global, num_points=20):
     max_deflection = max(deflections, key=abs)
     return max_deflection, xs, deflections
 
-def _distribute_load(x, y, q):
+def distribute_load(x, y, q):
     perimeter = 2 * (x + y)
     q_x = x * q / perimeter
     q_y = y * q / perimeter
     return q_x, q_y
 
+def check_nodes(x, z, nodes):
+    check = True
+    for node in nodes.values():
+        if (node[0] == 0 or node[0] == x) and (0 <= node[1] <= z):
+            pass
+        elif (node[1] == 0 or node[1] == z) and (0 <= node[0] <= x):
+            pass
+        else:
+            print(f"Node {node} out of bounds: {0 <= node[0] <= x} and {0 <= node[1] <= z}")
+            check = False
+    return check
 
 # Example usage:
 
-# Nodes (index: [x, y]) 
-nodes = {
-    0: [0, 0],
-    1: [50, 0],
-    2: [100, 0],
-    3: [0, 20],
-    4: [50, 20],
-    5: [100, 20]
-}
+# Nodes (index: [x or y, z]) 
+# corner_nodes = [0, cfg.z_in], [cfg.x_in, cfg.z_in]
+# nodes_x = {
+#     0: [0, 0],
+#     1: [25, 0],
+#     2: [53, 0],
+#     3: corner_nodes[0],
+#     4: [25, 20],
+#     5: corner_nodes[1]
+# }
 
-c_channel = Profile(material=gd.SST, gauge=8, profile_type="C")
+# c_channel = Profile(material=gd.SST, gauge=8, profile_type="C")
 
-# Members 
-members = [
-    [0, 1], [1, 2],                 # bottom
-    [3, 4], [4, 5],                 # top
-    [0, 3], [1, 4], [2, 5],         # verticals
-    [0, 4], [1, 3], [1, 5], [2, 4]  # diagonals
-]
+# # Members 
+# members_x = [
+#     [0, 1], [1, 2],                 # bottom
+#     [3, 4], [4, 5],                 # top
+#     [0, 3], [1, 4], [2, 5],         # verticals
+#     [0, 4], [1, 3], [1, 5], [2, 4]  # diagonals
+# ]
 
-q_x, q_y = _distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
-
-calculate_wall_frame_structural(nodes, members, c_channel, q=q_x, display=False)
+# q_x, q_y = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
+# if check_nodes(cfg.x_in, cfg.z_in, nodes_x):
+#     calculate_wall_frame_structural(nodes_x, members_x, c_channel, q=q_x, display=True)

@@ -5,7 +5,7 @@ Allowable Stress Design (ASD) principles.
 Walls assumed to have 1 fixed edge (floor), 2 simply supported edges (walls), and 1 free edge (top).
 Floor assumed to have 4 fixed edges.
 
-Safety Factor of 2.5 is applied to yield strength of materials.
+Safety Factor applied to yield strength of materials.
 
 Min. Wind Pressure Rating per Zone Category:
 - Non-Tropical Cyclone (NTC): 40 psf
@@ -90,7 +90,7 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
 
     # Obtain allowable stress and elastic modulus
     props = MATERIALS[material]
-    S_allow = props["yield_strength"] / SF  # psi
+    S_allow = props["yield_strength"] / SF # psi
     E = props["elastic_mod"]  # psi
 
     # Hydrostatic pressure at bottom of floor (psi)
@@ -138,7 +138,7 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
 
 display = True
 calculate_wall_gauge(
-    width_in=18,              
+    width_in=13,              
     height_in=z_in,             
     water_height_in=10,       
     wind_zone=WIND_NTC,
@@ -149,9 +149,9 @@ calculate_wall_gauge(
 print(" ")
 
 calculate_floor_gauge(
-    width_in=53,              
-    length_in=33,             
-    water_height_in=10,     
+    width_in=50,              
+    length_in=31,             
+    water_height_in=14,     
     material=SST,
     display=display
 )

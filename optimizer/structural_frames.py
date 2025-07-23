@@ -26,7 +26,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
     K = 1.0                             # Effective length factor (pinned-pinned)
     load_factor = 1.5                   # Load factor (LRFD)
     resistance_factor = 0.9             # Resistance factor (LRFD)
-    max_deflection_ratio = 1/20         # Deflection limit
+    max_deflection_ratio = 1/500        # Deflection limit
 
     # Filter out invalid members (non-existent in nodes dictionary)
     members = [m for m in members if m[0] in nodes and m[1] in nodes]
@@ -67,11 +67,24 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
 
     # === Apply Boundary Conditions ===
     fixed_dofs = []
-    for node_id in nodes:
-        if nodes[node_id][1] == 0:  # Only fix nodes on the bottom edge (y = 0)
+    simply_supported_dofs = []
+
+    for node_id, (x, y) in nodes.items():
+        max_x = max(n[0] for n in nodes.values())
+        max_y = max(n[1] for n in nodes.values())
+
+        # Fix bottom corners (fully fixed)
+        if y == 0 and (x == 0 or x == max_x):
             fixed_dofs += [3*node_id, 3*node_id+1, 3*node_id+2]
 
-    free_dofs = [i for i in range(total_dof) if i not in fixed_dofs]
+        # Simply support top corners (restrict vertical displacement only)
+        elif y == max_y and (x == 0 or x == max_x):
+            simply_supported_dofs += [3*node_id, 3*node_id + 1]  # Restrict horizontal and vertical displacement 
+
+    # Free DOFs are all DOFs not in fixed or simply supported DOFs
+    free_dofs = [i for i in range(total_dof) if i not in fixed_dofs + simply_supported_dofs]
+
+    # Extract the reduced stiffness matrix and force vector for free DOFs
     K_ff = K_global[np.ix_(free_dofs, free_dofs)]
     F_f = F_global[free_dofs]
 

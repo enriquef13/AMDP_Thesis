@@ -61,12 +61,23 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
 
         member_pairs = []
         vertical_pairs = [[bottom_id_nodes[i], top_id_nodes[i]] for i in range(len(bottom_id_nodes))]
-        # horizontal_pairs = [[left_id_nodes[i], right_id_nodes[i]] for i in range(len(left_id_nodes))]
-        # member_pairs = vertical_pairs
-        # print(f"Initial Pairs: {len(member_pairs)}")
+        horizontal_pairs = []
+
+        # Connect all consecutive nodes along the bottom edge
+        for i in range(len(bottom_id_nodes) - 1):
+            horizontal_pairs.append([bottom_id_nodes[i], bottom_id_nodes[i + 1]])
+
+        # Connect all consecutive nodes along the top edge
+        for i in range(len(top_id_nodes) - 1):
+            horizontal_pairs.append([top_id_nodes[i], top_id_nodes[i + 1]])
+
+        member_pairs = vertical_pairs + horizontal_pairs
 
         # Add diagonal members in all the consecutive node pairs
         # Identify all possible boxes (4 nodes forming a rectangle)
+        # Add diagonal members in every 3rd box (4 nodes forming a rectangle)
+        box_counter = 0  # Initialize a counter for boxes
+
         for i, bottom_left in enumerate(bottom_id_nodes[:-1]):
             for j, top_left in enumerate(top_id_nodes[:-1]):
                 if i < len(bottom_id_nodes) - 1 and j < len(top_id_nodes) - 1:
@@ -79,13 +90,12 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
                         nodes[bottom_left][1] == nodes[bottom_right][1] and
                         nodes[top_left][1] == nodes[top_right][1]):
                         
-                        # Add diagonal members
-                        member_pairs.append([bottom_left, top_right])  # Diagonal 1
-                        member_pairs.append([bottom_right, top_left])  # Diagonal 2
-                
-                if len(member_pairs) < 0:
-                    print("Not enough members for the given nodes. Skipping this frame.")
-                    continue
+                        box_counter += 1  # Increment the box counter
+
+                        # Add diagonal members only for every 3rd box
+                        if box_counter % 1 == 0:
+                            member_pairs.append([bottom_left, top_right])  # Diagonal 1
+                            member_pairs.append([bottom_right, top_left])  # Diagonal 2
 
         frames.append([nodes.copy(), member_pairs.copy()])
 
@@ -96,32 +106,6 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
             print(f"  Members: {frame[1]}")
 
     return frames
-
-def _check_members(pair, members):
-    for member in members:
-        if set(pair) == set(member):
-            return True
-    return False
-
-def _check_overlap_members(pair, nodes):
-    """
-    Returns True if the member defined by 'pair' passes over (overlaps) more than one node.
-    """
-    idx1, idx2 = pair
-    x1, y1 = nodes[idx1]
-    x2, y2 = nodes[idx2]
-    overlap_count = 0
-    for idx, (x, y) in nodes.items():
-        if idx == idx1 or idx == idx2:
-            continue
-        # Check if the node is collinear with the pair
-        if (x2 - x1) * (y - y1) == (y2 - y1) * (x - x1):
-            # Check if the node is strictly between the two nodes
-            if min(x1, x2) < x < max(x1, x2) or min(y1, y2) < y < max(y1, y2):
-                overlap_count += 1
-                if overlap_count > 0:
-                    return True
-    return False
 
 def _get_member_range(n_nodes):
     """
@@ -142,11 +126,12 @@ def _get_member_range(n_nodes):
     return range(min_members, max_members//2 + 3)
 
 display = True
-frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=40, max_nodes=40, display=False)
+n_nodes = 12
+frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=False)
 c_channel = Profile('SST-M3', 8, 'Rectangular')
 for i, frame in enumerate(frames):
     try:
         q_x, q_y = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
-        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q_x, display=display)
+        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q_x/1000, display=display)
     except Exception as e:
         print(f"Error processing frame {i + 1}: {e}")

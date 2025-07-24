@@ -11,7 +11,7 @@ from profiles import Profile
 import config as cfg
 import general_data as gd
 from structural_panels import calculate_wall_gauge
-from generate_floors import obtain_APB_limits
+
 
 def generate_frames(x, y, channel_type, n_frames=5, min_nodes=4, max_nodes=12, display=False):
     """
@@ -82,7 +82,8 @@ def generate_frames(x, y, channel_type, n_frames=5, min_nodes=4, max_nodes=12, d
         # Add diagonal members in all the consecutive node pairs
         # Identify all possible boxes (4 nodes forming a rectangle)
         # Add diagonal members in every 3rd box (4 nodes forming a rectangle)
-        box_counter = 3  # Initialize a counter for boxes
+        box_counter = 0  # Initialize a counter for boxes
+        box_separation = 1  # Add diagonal members only for every 3rd box
 
         for i, bottom_left in enumerate(bottom_id_nodes[:-1]):
             for j, top_left in enumerate(top_id_nodes[:-1]):
@@ -95,13 +96,15 @@ def generate_frames(x, y, channel_type, n_frames=5, min_nodes=4, max_nodes=12, d
                         nodes[bottom_right][0] == nodes[top_right][0] and
                         nodes[bottom_left][1] == nodes[bottom_right][1] and
                         nodes[top_left][1] == nodes[top_right][1]):
+
+                        # Add diagonal members only for every 3rd box
+                        if box_counter % box_separation == 0:
+                            member_pairs.append([bottom_left, top_right])  # Diagonal 1
+                            member_pairs.append([bottom_right, top_left])  # Diagonal 2
                         
                         box_counter += 1  # Increment the box counter
 
-                        # Add diagonal members only for every 3rd box
-                        if box_counter % 3 == 0:
-                            member_pairs.append([bottom_left, top_right])  # Diagonal 1
-                            member_pairs.append([bottom_right, top_left])  # Diagonal 2
+                        
 
         # --- PANEL EXTRACTION AND WALL GAUGE CALCULATION ---
         # 1. Distance between vertical members = panel length
@@ -122,12 +125,12 @@ def generate_frames(x, y, channel_type, n_frames=5, min_nodes=4, max_nodes=12, d
             n_panels = 1
 
         # 4. Calculate wall gauge
-        wall_gauge = calculate_wall_gauge(panel_width, panel_length, cfg.water_height_in, wind_zone=cfg.wind_zone, material=cfg.material, display=False)
+        wall_gauge = calculate_wall_gauge(panel_width, panel_length, cfg.water_height_in, wind_zone=cfg.wind_zone, material=cfg.material, display=True)
         if wall_gauge < 10 or wall_gauge is None:
             raise ValueError("Calculated wall gauge is too thick.")
 
         cap = Capabilities(cfg.material, wall_gauge)
-        _, x_max, _, y_max = obtain_APB_limits(cap)
+        _, x_max, _, y_max = cap.obtain_APB_limits()
         max_length = max(x_max, y_max)
         n_panels = int(np.ceil(x / max_length))
         panel_length = x / n_panels
@@ -209,7 +212,7 @@ def _get_member_range(n_nodes):
 
 display = True
 n_nodes = 14
-channel_type = Profile(cfg.material, 10, 'C')
+channel_type = Profile(cfg.material, 16, 'C')
 frames = generate_frames(cfg.x_in, cfg.z_in, channel_type=channel_type, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=display)
 for i, frame in enumerate(frames):
     try:

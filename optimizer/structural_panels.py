@@ -115,7 +115,7 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
     if display: print(f"Thickness to avoid yield: {t_prevent_yield_in:.3f}\"")
 
     # Calculate thickness to avoid deflection
-    deflection_limit = 0.5 # inches
+    deflection_limit = 1 # inches
     t_avoid_deflection_in = np.power((alpha * water_pressure_psi * b**4) / (E * deflection_limit), 1/3)
     if display: print(f"Thickness to avoid {deflection_limit}\" deflection: {t_avoid_deflection_in:.3f}\"")
 

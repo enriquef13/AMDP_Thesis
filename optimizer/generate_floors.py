@@ -5,36 +5,6 @@ import math
 import matplotlib.pyplot as plt # type: ignore
 import matplotlib.patches as patches # type: ignore
 
-def obtain_APB_limits(cap):
-    x_min = cap.APB_min_width
-    x_max = min(cap.APB_max_width, cap.max_sheet_width - 10)
-    y_min = cap.APB_min_length
-    y_max = min(cap.APB_max_length, cap.max_sheet_length - 10)
-
-    # Apply diagonal constraint
-    max_diagonal = cap.APB_max_flat_diagonal
-    if x_max**2 + y_max**2 > max_diagonal**2:
-        x_max = min(x_max, math.sqrt(max_diagonal**2 - y_min**2))
-        y_max = min(y_max, math.sqrt(max_diagonal**2 - x_min**2))
-
-    # Apply mass constraint
-    max_mass = cap.APB_max_mass / cap.density[cap.gauge_material]
-    if x_max * y_max > max_mass:
-        x_max = min(x_max, max_mass / y_min)
-        y_max = min(y_max, max_mass / x_min)
-
-    if cap.gauge == 16 or cap.gauge_material == "14_GLV" or cap.gauge_material == "12_GLV":
-        return x_min, x_max, y_min, y_max - 5  # Ensure minimum dimensions
-
-    # Ensure minimum dimensions
-    return x_min, x_max, y_min, y_max
-
-def obtain_MPB_limits(cap):
-    x_min = 0
-    x_max = cap.max_sheet_width
-    y_min = 0
-    y_max = cap.MPB_max_dim
-    return x_min, x_max, y_min, y_max
 
 def fill_floor_with_panels(floor_width, floor_length, cap):
     """
@@ -50,7 +20,7 @@ def fill_floor_with_panels(floor_width, floor_length, cap):
         list: List of panel dimensions [(width, length), ...].
     """
 
-    x_min, x_max, y_min, y_max = obtain_APB_limits(cap)
+    x_min, x_max, y_min, y_max = cap.obtain_APB_limits()
     print(f"APB limits: x_min={x_min}, x_max={x_max}, y_min={y_min}, y_max={y_max}")
 
     panels = []
@@ -58,7 +28,6 @@ def fill_floor_with_panels(floor_width, floor_length, cap):
     n_bottom_panels = math.ceil(floor_width / x_max)
     bottom_space = floor_length if floor_length <= y_max else y_max
     top_space = floor_length - bottom_space
-    print(f"Bottom space: {bottom_space}, Top space: {top_space}")
 
     bottom_length = bottom_space if top_space >= y_min or top_space <= 0 else bottom_space - (y_min - top_space)
     bottom_width = floor_width / n_bottom_panels    
@@ -69,7 +38,7 @@ def fill_floor_with_panels(floor_width, floor_length, cap):
     if top_space > 0:
         top_space = floor_length - bottom_length
         top_orientation = 'horizontal' if top_space >= x_min and top_space <= x_max else 'vertical'
-        print(f"Top orientation: {top_orientation}")
+        # top_orientation = 'vertical'
         if top_orientation == 'horizontal':
             n_top_panels = math.ceil(floor_width / y_max)
             top_length = top_space if top_space >= x_min and top_space <= x_max else x_max

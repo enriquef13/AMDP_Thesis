@@ -5,6 +5,7 @@ import numpy as np # type: ignore
 import pandas as pd # type: ignore
 import xlwings as xw # type: ignore
 import general_data as gd
+import math
 
 class Capabilities:
     def __init__(self, material, gauge):
@@ -76,6 +77,37 @@ class Capabilities:
         self.TL_max_mass_per_length = 7.348
         self.TL_max_width = 13 # Min constraint (conservative - assuming two 3" flanges)
         # self.TL_max_width = round(4*((self.TL_max_diagonal_width**2 / 2) ** 0.5), 2) # Max constraint (based on diagonal width with 4 flanges)
+
+    def obtain_APB_limits(self):
+        x_min = self.APB_min_width
+        x_max = min(self.APB_max_width, self.max_sheet_width - 10)
+        y_min = self.APB_min_length
+        y_max = min(self.APB_max_length, self.max_sheet_length - 10)
+
+        # Apply diagonal constraint
+        max_diagonal = self.APB_max_flat_diagonal
+        if x_max**2 + y_max**2 > max_diagonal**2:
+            x_max = min(x_max, math.sqrt(max_diagonal**2 - y_min**2))
+            y_max = min(y_max, math.sqrt(max_diagonal**2 - x_min**2))
+
+        # Apply mass constraint
+        max_mass = self.APB_max_mass / self.density[self.gauge_material]
+        if x_max * y_max > max_mass:
+            x_max = min(x_max, max_mass / y_min)
+            y_max = min(y_max, max_mass / x_min)
+
+        if self.gauge == 16 or self.gauge_material == "14_GLV" or self.gauge_material == "12_GLV":
+            return x_min, x_max, y_min, y_max - 5  # Ensure minimum dimensions
+
+        # Ensure minimum dimensions
+        return x_min, x_max, y_min, y_max
+
+    def obtain_MPB_limits(self):
+        x_min = 0
+        x_max = self.max_sheet_width
+        y_min = 0
+        y_max = self.MPB_max_dim
+        return x_min, x_max, y_min, y_max
 
     def _get_constraints(self, min, max, n_points):
         # Create grid for all

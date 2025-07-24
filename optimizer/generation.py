@@ -95,7 +95,7 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
                         box_counter += 1  # Increment the box counter
 
                         # Add diagonal members only for every 3rd box
-                        if box_counter % 1 == 0:
+                        if box_counter % 10 == 0:
                             member_pairs.append([bottom_left, top_right])  # Diagonal 1
                             member_pairs.append([bottom_right, top_left])  # Diagonal 2
 
@@ -127,13 +127,13 @@ def _get_member_range(n_nodes):
             add -= 1
     return range(min_members, max_members//2 + 3)
 
-# display = True
-# n_nodes = 12
-# frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=False)
-# c_channel = Profile('SST-M3', 8, 'Rectangular')
-# for i, frame in enumerate(frames):
-#     try:
-#         q_x, q_y = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
-#         calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q_x/1000, display=display)
-#     except Exception as e:
-#         print(f"Error processing frame {i + 1}: {e}")
+display = True
+n_nodes = 8
+frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=False)
+c_channel = Profile('GLV-M5', 10, 'Rectangular')
+for i, frame in enumerate(frames):
+    try:
+        q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
+        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q, display=display)
+    except Exception as e:
+        print(f"Error processing frame {i + 1}: {e}")

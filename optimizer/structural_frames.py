@@ -67,22 +67,14 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
 
     # === Apply Boundary Conditions ===
     fixed_dofs = []
-    simply_supported_dofs = []
 
     for node_id, (x, y) in nodes.items():
-        max_x = max(n[0] for n in nodes.values())
-        max_y = max(n[1] for n in nodes.values())
+        # Fix nodes on the bottom edge
+        if y == 0:
+            fixed_dofs += [3*node_id, 3*node_id + 1, 3*node_id + 2]
 
-        # Fix bottom corners (fully fixed)
-        if y == 0 and (x == 0 or x == max_x):
-            fixed_dofs += [3*node_id, 3*node_id+1, 3*node_id+2]
-
-        # Simply support top corners (restrict vertical displacement only)
-        elif y == max_y and (x == 0 or x == max_x):
-            simply_supported_dofs += [3*node_id, 3*node_id + 1]  # Restrict horizontal and vertical displacement 
-
-    # Free DOFs are all DOFs not in fixed or simply supported DOFs
-    free_dofs = [i for i in range(total_dof) if i not in fixed_dofs + simply_supported_dofs]
+    # All other nodes are free (no need to specify anything else)
+    free_dofs = [i for i in range(len(nodes) * 3) if i not in fixed_dofs]
 
     # Extract the reduced stiffness matrix and force vector for free DOFs
     K_ff = K_global[np.ix_(free_dofs, free_dofs)]
@@ -92,9 +84,6 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
     u_f = solve(K_ff, F_f)
     u_global = np.zeros(total_dof)
     u_global[free_dofs] = u_f
-
-    # === Compute Reactions ===
-    R_global = K_global @ u_global - F_global
 
     # === Internal Forces per Member ===
     internal_results = []
@@ -138,32 +127,77 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
             "Fails?": failed
         })
 
+    # === Additional Check for Horizontal Top Edge Members ===
+    max_y = max(n[1] for n in nodes.values())
+    
+    for i, j in members:
+        xi, yi = nodes[i]
+        xj, yj = nodes[j]
+        
+        # Check if this is a horizontal member along the top edge
+        if yi == max_y and yj == max_y and yi == yj:  # Both nodes at same Y (top edge) and horizontal
+            L = abs(xj - xi)  # Length of horizontal member
+            
+            # Calculate bending moment due to distributed load
+            # For a simply supported beam with uniform load: M_max = q*L^2/8
+            # Using q/2 as specified in the request (half the load)
+            distributed_moment = q * L**2 / 8
+            
+            # Calculate bending stress from distributed load
+            distributed_bending_stress = distributed_moment * c / I
+            
+            # Check if this additional bending stress causes failure
+            distributed_bending_fail = abs(distributed_bending_stress) > resistance_factor * Fy
+            
+            if distributed_bending_fail:
+                failed_members.add((i, j))
+                print(f"Top edge member {i}-{j} fails due to distributed load bending moment:")
+            print(f"  Distributed moment: {distributed_moment:.2f} lbf-in")
+            print(f"  Distributed bending stress: {distributed_bending_stress:.2f} psi")
+            print(f"  Allowable bending stress: {resistance_factor * Fy:.2f} psi")
+
     # === Deflection Check ===
-    L_span = max(n[0] for n in nodes.values()) - min(n[0] for n in nodes.values())
-    deflection_limit = max_deflection_ratio * L_span
+    deflection_limit_ratio = max_deflection_ratio  # e.g., 1/500 or 1/360
     node_deflections = {}
-    deflected_nodes = []
+    deflected_members = []
 
-    for i, (x, y) in nodes.items():
-        if 3*i+1 in free_dofs:
-            v_disp = u_global[3*i+1]
-            node_deflections[i] = v_disp
-            if abs(v_disp) > deflection_limit:
-                deflected_nodes.append(i)
+    for i, j in members:
+        xi, yi = nodes[i]
+        xj, yj = nodes[j]
+        L = np.sqrt((xj - xi)**2 + (yj - yi)**2)
+        limit = deflection_limit_ratio * L
 
-    if deflected_nodes:
-        print("\nNodes exceeding deflection limit (L/360):")
-        for i in deflected_nodes:
-            print(f"Node {i} - Vertical deflection: {node_deflections[i]*1000:.2f} in")
+        # Displacement vector at each node
+        u_i = u_global[3*i]
+        v_i = u_global[3*i+1]
+        u_j = u_global[3*j]
+        v_j = u_global[3*j+1]
+
+        mag_i = np.sqrt(u_i**2 + v_i**2)
+        mag_j = np.sqrt(u_j**2 + v_j**2)
+
+        node_deflections[i] = mag_i
+        node_deflections[j] = mag_j
+        rel_disp = np.sqrt((u_j - u_i)**2 + (v_j - v_i)**2)
+        max_deflection = max(mag_i, mag_j, rel_disp)
+        print(f"Member {i}-{j}: Max node deflection = {max_deflection:.4f} in, Deflection limit = {limit:.4f} in")
+
+        if mag_i > limit or mag_j > limit or rel_disp > limit:
+            deflected_members.append((i, j))
+
+    # === Report ===
+    if deflected_members:
+        print(f"\nMembers with node deflections exceeding L/{int(1/deflection_limit_ratio)}:")
+        for i, j in deflected_members:
+            print(f"Member {i}-{j} | L = {np.linalg.norm(np.array(nodes[j]) - np.array(nodes[i])):.2f} in")
+            print(f"  Node {i} deflection = {node_deflections[i]*1000:.2f} mils")
+            print(f"  Node {j} deflection = {node_deflections[j]*1000:.2f} mils")
     else:
-        print("\nAll vertical deflections are within the allowable limit.")
+        print(f"\nAll member-end node deflections are within L/{int(1/deflection_limit_ratio)} limit.")
+
 
     # === Evaluate Beam Deflection ===
     if display:
-        print("\nMaximum internal beam deflections:")
-        for i, j in members:
-            max_deflection, _, _ = _evaluate_beam_deflection(i, j, u_global, nodes)
-            print(f"Member {i}-{j}: Max internal deflection = {max_deflection*1000:.2f} in")
 
         # Display internal forces
         df_results = pd.DataFrame(internal_results)
@@ -229,35 +263,10 @@ def _frame_stiffness(x1, y1, x2, y2, E, A, I):
 
     return T.T @ k_local @ T, L
 
-def _evaluate_beam_deflection(i, j, u_global, nodes, num_points=20):
-    dof_map = [3*i, 3*i+1, 3*i+2, 3*j, 3*j+1, 3*j+2]
-    u_elem = u_global[dof_map]
-    v_i, theta_i = u_elem[1], u_elem[2]
-    v_j, theta_j = u_elem[4], u_elem[5]
-
-    xi, yi = nodes[i]
-    xj, yj = nodes[j]
-    L = np.sqrt((xj - xi)**2 + (yj - yi)**2)
-
-    xs = np.linspace(0, L, num_points)
-    deflections = []
-    for x in xs:
-        xi_norm = x / L
-        N1 = 1 - 3*xi_norm**2 + 2*xi_norm**3
-        N2 = x * (1 - 2*xi_norm + xi_norm**2)
-        N3 = 3*xi_norm**2 - 2*xi_norm**3
-        N4 = x * (xi_norm**2 - xi_norm)
-        v = N1 * v_i + N2 * theta_i + N3 * v_j + N4 * theta_j
-        deflections.append(v)
-
-    max_deflection = max(deflections, key=abs)
-    return max_deflection, xs, deflections
 
 def distribute_load(x, y, q):
     perimeter = 2 * (x + y)
-    q_x = x * q / perimeter
-    q_y = y * q / perimeter
-    return q_x, q_y
+    return q / perimeter
 
 def check_nodes(x, z, nodes):
     check = True
@@ -294,6 +303,6 @@ def check_nodes(x, z, nodes):
 #     [0, 4], [1, 3], [1, 5], [2, 4]  # diagonals
 # ]
 
-# q_x, q_y = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
+# q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
 # if check_nodes(cfg.x_in, cfg.z_in, nodes_x):
-#     calculate_wall_frame_structural(nodes_x, members_x, c_channel, q=q_x, display=True)
+#     calculate_wall_frame_structural(nodes_x, members_x, c_channel, q=q, display=True)

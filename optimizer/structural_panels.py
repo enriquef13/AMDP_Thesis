@@ -17,7 +17,7 @@ Wind Pressure Rating: Structural Design Standard - North America, Jan 2022. p.p.
 Plate bending formulas: https://jackson.engr.tamu.edu/wp-content/uploads/sites/229/2023/03/Roarks-formulas-for-stress-and-strain.pdf, p.p. 511
 """
 
-import numpy as np
+import numpy as np # type: ignore
 from general_data import MATERIALS, GAUGES, BETA_FLOOR, ALPHA_FLOOR, BETA_WALL, GAMMA_WALL, WIND_PRESSURE_RATINGS, SF
 from general_data import WIND_NTC, WIND_TC, WIND_TCM, SST, GLV
 from config import z_in

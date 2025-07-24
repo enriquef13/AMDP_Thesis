@@ -171,11 +171,11 @@ def _get_member_range(n_nodes):
 
 display = True
 n_nodes = 12
-frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=True)
+frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=display)
 c_channel = Profile('GLV-M5', 10, 'Rectangular')
 for i, frame in enumerate(frames):
     try:
         q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
-        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q, display=True)
+        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q, display=display, plot=True)
     except Exception as e:
         print(f"Error processing frame {i + 1}: {e}")

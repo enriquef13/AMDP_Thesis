@@ -6,7 +6,7 @@ from profiles import Profile
 import general_data as gd
 import config as cfg
 
-def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
+def calculate_wall_frame_structural(nodes, members, channel, q, display=False, plot=False):
     """
     Calculate the structural properties of a wall based on its nodes and members.
     
@@ -188,25 +188,24 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
             deflected_members.append((i, j))
 
     # === Report ===
-    if deflected_members:
-        print(f"\nMembers with node deflections exceeding L/{int(1/deflection_limit_ratio)}:")
-        for i, j in deflected_members:
-            if display:
-                print(f"Member {i}-{j} | L = {np.linalg.norm(np.array(nodes[j]) - np.array(nodes[i])):.2f} in")
-                print(f"  Node {i} deflection = {node_deflections[i]*1000:.2f} mils")
-                print(f"  Node {j} deflection = {node_deflections[j]*1000:.2f} mils")
-    else:
-        print(f"\nAll member-end node deflections are within L/{int(1/deflection_limit_ratio)} limit.")
-
-
-    # === Evaluate Beam Deflection ===
     if display:
+        if deflected_members:
+            print(f"\nMembers with node deflections exceeding L/{int(1/deflection_limit_ratio)}:")
+            for i, j in deflected_members:
+                if display:
+                    print(f"Member {i}-{j} | L = {np.linalg.norm(np.array(nodes[j]) - np.array(nodes[i])):.2f} in")
+                    print(f"  Node {i} deflection = {node_deflections[i]*1000:.2f} mils")
+                    print(f"  Node {j} deflection = {node_deflections[j]*1000:.2f} mils")
+        else:
+            print(f"\nAll member-end node deflections are within L/{int(1/deflection_limit_ratio)} limit.")
 
+        # === Evaluate Beam Deflection ===
         # Display internal forces
         df_results = pd.DataFrame(internal_results)
         print(df_results.round(3))
 
-        # === Visualize the 2D Structure with Failure Highlight ===
+    # === Visualize the 2D Structure with Failure Highlight ===
+    if plot:
         plt.figure(figsize=(8, 6))
         for i, j in members:
             x = [nodes[i][0], nodes[j][0]]

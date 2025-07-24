@@ -52,43 +52,23 @@ def fill_floor_with_panels(floor_width, floor_length, x_min, x_max, y_min, y_max
     Returns:
         list: List of panel dimensions [(width, length), ...].
     """
+    short_dim = min(x_min, y_min)
+    long_dim = max(x_max, y_max)
+    n_bottom_panels = math.ceil(floor_width / short_dim)
+
+    bottom_length = floor_length - short_dim 
+    bottom_width = floor_width / n_bottom_panels    
+
+    n_top_panels = math.ceil(floor_width / long_dim)
+
+    top_length = short_dim
+    top_width = floor_width / n_top_panels
+
     panels = []
-    current_y = 0
-
-    while current_y < floor_length:
-        remaining_length = floor_length - current_y
-        current_x = 0
-
-        while current_x < floor_width:
-            remaining_width = floor_width - current_x
-
-            # Try both orientations of the panel
-            panel_width_1 = min(x_max, remaining_width)
-            panel_length_1 = min(y_max, remaining_length)
-
-            panel_width_2 = min(y_max, remaining_width)
-            panel_length_2 = min(x_max, remaining_length)
-
-            # Choose the orientation that covers the largest area
-            if panel_width_1 * panel_length_1 >= panel_width_2 * panel_length_2:
-                panel_width, panel_length = panel_width_1, panel_length_1
-            else:
-                panel_width, panel_length = panel_width_2, panel_length_2
-
-            # Ensure minimum dimensions
-            if panel_width < x_min:
-                panel_width = x_min
-            if panel_length < y_min:
-                panel_length = y_min
-
-            # Add the panel to the list
-            panels.append((panel_width, panel_length))
-
-            # Move to the next position in the row
-            current_x += panel_width
-
-        # Move to the next row
-        current_y += panel_length
+    for _ in range(n_bottom_panels):
+        panels.append((bottom_width, bottom_length))
+    for _ in range(n_top_panels):
+        panels.append((top_width, top_length))
 
     return panels
 
@@ -112,40 +92,7 @@ def visualize_filled_floor(floor_width, floor_length, panels):
     ax.set_ylabel("Length")
     
     # Place panels following the same logic as in the backtracking algorithm
-    placed_panels = []
-    panel_index = 0
-    current_x = 0
-    current_y = 0
-    remaining_width = floor_width
-    remaining_length = floor_length
-    
-    while panel_index < len(panels):
-        panel_width, panel_length = panels[panel_index]
-        panel_index += 1
-        
-        # Place the panel
-        rect = patches.Rectangle((current_x, current_y), panel_width, panel_length,
-                                  edgecolor='black', facecolor='lightblue', alpha=0.8)
-        ax.add_patch(rect)
-        
-        # Add text label showing dimensions
-        ax.text(current_x + panel_width/2, current_y + panel_length/2, 
-                f"{panel_width}x{panel_length}", 
-                horizontalalignment='center', verticalalignment='center')
-        
-        placed_panels.append((current_x, current_y, panel_width, panel_length))
-        
-        # Update remaining width
-        remaining_width -= panel_width
-        
-        # Check if we need to move to the next row
-        if remaining_width <= 0 and panel_index < len(panels):
-            current_x = 0
-            current_y += panel_length
-            remaining_width = floor_width
-            remaining_length -= panel_length
-        else:
-            current_x += panel_width
+
     
     # Show the plot
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
@@ -165,8 +112,8 @@ panels = fill_floor_with_panels(floor_width, floor_length, x_min, x_max, y_min, 
 
 print(f"Number of panels: {len(panels)}")
 print("Panel dimensions:")
-for panel in panels:
-    print(f"Width: {panel[0]}, Length: {panel[1]}")
+for r, panel in enumerate(panels):
+    print(f"Panel {r+1}: Width: {panel[0]}, Length: {panel[1]}")
 
 # Visualize the filled floor
-visualize_filled_floor(floor_width, floor_length, panels)
+# visualize_filled_floor(floor_width, floor_length, panels)

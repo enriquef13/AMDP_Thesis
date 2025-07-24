@@ -82,7 +82,7 @@ def generate_frames(x, y, channel_type, n_frames=5, min_nodes=4, max_nodes=12, d
         # Add diagonal members in all the consecutive node pairs
         # Identify all possible boxes (4 nodes forming a rectangle)
         # Add diagonal members in every 3rd box (4 nodes forming a rectangle)
-        box_counter = 0  # Initialize a counter for boxes
+        box_counter = 3  # Initialize a counter for boxes
 
         for i, bottom_left in enumerate(bottom_id_nodes[:-1]):
             for j, top_left in enumerate(top_id_nodes[:-1]):
@@ -208,7 +208,7 @@ def _get_member_range(n_nodes):
     return range(min_members, max_members//2 + 3)
 
 display = True
-n_nodes = 20
+n_nodes = 14
 channel_type = Profile(cfg.material, 10, 'C')
 frames = generate_frames(cfg.x_in, cfg.z_in, channel_type=channel_type, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=display)
 for i, frame in enumerate(frames):

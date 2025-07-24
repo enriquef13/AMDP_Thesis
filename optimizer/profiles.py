@@ -50,5 +50,8 @@ class Profile:
             self.c = h / 2
             self.unique_bends = 4
 
-        self.perimeter = self.width = 2 * (f + b) + h
+        if self.profile_type in ['C', 'Hat', 'Double C']:
+            self.perimeter = self.width = 2 * (f + b) + h
+        elif self.profile_type == 'Rectangular':
+            self.perimeter = self.width = 2 * (b + h)     
         self.corner_welds = 0

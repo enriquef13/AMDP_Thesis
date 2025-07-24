@@ -13,11 +13,12 @@ import general_data as gd
 from structural_panels import calculate_wall_gauge
 from generate_floors import obtain_APB_limits
 
-def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
+def generate_frames(x, y, channel_type, n_frames=5, min_nodes=4, max_nodes=12, display=False):
     """
     Generate all possible configurations of nodes and members.
     Returns a list of tuples, each containing the number of nodes and members,
-    as well as panel information and wall gauge.
+    as well as panel information, wall gauge, and material usage.
+    The channel_type parameter should be a Profile instance representing the channel type.
     """
 
     corner_nodes = {0: [0, 0], 1: [x, 0], 2: [0, y], 3: [x, y]}
@@ -131,6 +132,34 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
         n_panels = int(np.ceil(x / max_length))
         panel_length = x / n_panels
 
+        # --- MATERIAL USAGE CALCULATION ---
+        # 1. Member mass
+        # Use the provided channel_type profile if given, else default
+        material = channel_type.material
+        member_gauge = channel_type.gauge
+        member_profile = channel_type.profile_type
+        cap = Capabilities(material, member_gauge)
+        member_width = channel_type.width
+        member_density = cap.density[cap.gauge_material]
+
+        total_member_mass = 0.0
+        for pair in member_pairs:
+            n1, n2 = nodes[pair[0]], nodes[pair[1]]
+            length = np.linalg.norm(np.array(n1) - np.array(n2))
+            mass = length * member_width * member_density
+            total_member_mass += mass
+
+        # 2. Panel mass
+        total_panel_area = n_panels * panel_length * panel_width
+        cap = Capabilities(material, wall_gauge)
+        panel_density = cap.density[cap.gauge_material]
+        total_panel_mass = total_panel_area * panel_density
+
+        # 3. Total mass
+        total_mass = total_member_mass + total_panel_mass
+        weight = 5
+        weighted_total_mass = weight * total_member_mass + total_panel_mass
+
         frames.append([
             nodes.copy(),
             member_pairs.copy(),
@@ -138,7 +167,11 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
                 "n_panels": n_panels,
                 "panel_length": panel_length,
                 "panel_width": panel_width,
-                "wall_gauge": wall_gauge
+                "wall_gauge": wall_gauge,
+                "total_member_mass": total_member_mass,
+                "total_panel_mass": total_panel_mass,
+                "total_mass": total_mass,
+                "weighted_total_mass": weighted_total_mass
             }
         ])
 
@@ -148,6 +181,11 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
             print(f"  Nodes: {frame[0]}")
             print(f"  Members: {frame[1]}")
             print(f"  Panels: {frame[2]}")
+            print(f"  Material Usage:")
+            print(f"    Member mass: {frame[2]['total_member_mass']:.2f}")
+            print(f"    Panel mass: {frame[2]['total_panel_mass']:.2f}")
+            print(f"    Total mass: {frame[2]['total_mass']:.2f}")
+            print(f"    Weighted total mass: {frame[2]['weighted_total_mass']:.2f}")
 
     return frames
 
@@ -171,11 +209,11 @@ def _get_member_range(n_nodes):
 
 display = True
 n_nodes = 20
-frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=True)
-c_channel = Profile('GLV-M5', 10, 'Rectangular')
+channel_type = Profile(cfg.material, 10, 'C')
+frames = generate_frames(cfg.x_in, cfg.z_in, channel_type=channel_type, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=display)
 for i, frame in enumerate(frames):
     try:
         q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
-        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q, display=display, plot=True)
+        calculate_wall_frame_structural(frame[0], frame[1], channel_type, q=q, display=display, plot=True)
     except Exception as e:
         print(f"Error processing frame {i + 1}: {e}")

@@ -4,6 +4,7 @@ import general_data as gd
 import math
 import matplotlib.pyplot as plt # type: ignore
 import matplotlib.patches as patches # type: ignore
+from structural_panels import calculate_floor_gauge
 
 def fill_floor_with_panels(floor_width, floor_length, cap, only_vertical=False):
     """
@@ -51,6 +52,39 @@ def fill_floor_with_panels(floor_width, floor_length, cap, only_vertical=False):
             panels.append((top_width, top_length))
 
     return panels
+
+def max_panel_length_for_gauge(water_height_in, material=gd.SST, gauge=16):
+    """
+    Get the maximum panel dimensions for a given gauge and water height.
+
+    Parameters:
+        water_height_in (float): Height of water inside the panel (inches).
+        material (str): Material type (SST or GLV).
+        gauge (int): Gauge number.
+
+    Returns:
+        tuple: Maximum panel dimensions (width, length) in inches.
+    """
+    min_width = 1
+    min_length = 1
+    max_width = 50
+    max_length = 500
+
+    last_gauge = 100
+    max_panel_length = 0
+    max_panel_width = 0
+    for i in range(min_length, max_length + 1):
+        for j in range(min_width, max_width + 1):
+            gauge_required = calculate_floor_gauge(j, i, water_height_in, material)
+            last_gauge = gauge_required if gauge_required else last_gauge
+            if max_panel_length < i: max_panel_length = i
+            if max_panel_width < j: max_panel_width = j
+            if gauge > last_gauge:
+                print(f"Maximum panel dimensions for gauge {gauge} and water height {water_height_in}: {max_panel_width} x {max_panel_length}")
+                return (max_panel_width, max_panel_length)
+
+    return None
+
 
 def visualize_filled_floor(floor_width, floor_length, panels, cap):
     """
@@ -109,14 +143,17 @@ def visualize_filled_floor(floor_width, floor_length, panels, cap):
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
     plt.show()
 
-for material in [gd.SST, gd.GLV]:
-    for gauge in [10, 12, 14, 16]:
-        # material = cfg.material
-        # gauge = 16
-        cap = Capabilities(material, gauge)
+# for material in [gd.SST, gd.GLV]:
+#     for gauge in [10, 12, 14, 16]:
+#         # material = cfg.material
+#         # gauge = 16
+#         cap = Capabilities(material, gauge)
 
-        floor_width = cfg.x_in
-        floor_length = cfg.y_in
+#         floor_width = cfg.x_in
+#         floor_length = cfg.y_in
 
-        panels = fill_floor_with_panels(floor_width, floor_length, cap)
-        visualize_filled_floor(floor_width, floor_length, panels, cap)
+#         panels = fill_floor_with_panels(floor_width, floor_length, cap, only_vertical=True)
+#         visualize_filled_floor(floor_width, floor_length, panels, cap)
+
+max_panel_length_for_gauge(cfg.water_height_in, material=cfg.material, gauge=10)
+calculate_floor_gauge(101, 24, cfg.water_height_in, material=cfg.material, display=True)

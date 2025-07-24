@@ -22,7 +22,7 @@ from general_data import MATERIALS, GAUGES, BETA_FLOOR, ALPHA_FLOOR, BETA_WALL, 
 from general_data import WIND_NTC, WIND_TC, WIND_TCM, SST, GLV
 from config import z_in
 
-def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", material="SST-M3", display=False):
+def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone=WIND_NTC, material=SST, display=False):
     """
     Calculate required sheet thickness for a wall.
 
@@ -80,7 +80,7 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", 
     return gauge_dict[t_closest_in]
 
 
-def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3", display=False):
+def calculate_floor_gauge(width_in, length_in, water_height_in, material=SST, display=False):
     """
     Calculate required thickness for a floor panel.
 
@@ -117,7 +117,7 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
     # Calculate thickness to avoid deflection
     deflection_limit = a/240 # inches
     t_avoid_deflection_in = np.power((alpha * water_pressure_psi * b**4) / (E * deflection_limit), 1/3)
-    if display: print(f"Thickness to avoid {deflection_limit:.2f}\" deflection: {t_avoid_deflection_in:.3f}\"")
+    if display: print(f"Thickness to avoid {deflection_limit:.2f}\" (L/240) deflection: {t_avoid_deflection_in:.3f}\"")
 
     # Required thickness is the maximum of the two
     t_required_in = max(t_prevent_yield_in, t_avoid_deflection_in)
@@ -150,10 +150,10 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
 
 # print(" ")
 
-calculate_floor_gauge(
-    width_in=107,              
-    length_in=14,            
-    water_height_in=13,     
-    material=SST,
-    display=True
-)
+# calculate_floor_gauge(
+#     width_in=107,              
+#     length_in=14,            
+#     water_height_in=13,     
+#     material=SST,
+#     display=True
+# )

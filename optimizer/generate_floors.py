@@ -51,12 +51,14 @@ def fill_floor_with_panels(floor_width, floor_length, cap):
     """
 
     x_min, x_max, y_min, y_max = obtain_APB_limits(cap)
+    print(f"APB limits: x_min={x_min}, x_max={x_max}, y_min={y_min}, y_max={y_max}")
 
     panels = []
 
     n_bottom_panels = math.ceil(floor_width / x_max)
     bottom_space = floor_length if floor_length <= y_max else y_max
     top_space = floor_length - bottom_space
+    print(f"Bottom space: {bottom_space}, Top space: {top_space}")
 
     bottom_length = bottom_space if top_space >= y_min or top_space <= 0 else bottom_space - (y_min - top_space)
     bottom_width = floor_width / n_bottom_panels    
@@ -65,7 +67,9 @@ def fill_floor_with_panels(floor_width, floor_length, cap):
         panels.append((bottom_width, bottom_length))
 
     if top_space > 0:
+        top_space = floor_length - bottom_length
         top_orientation = 'horizontal' if top_space >= x_min and top_space <= x_max else 'vertical'
+        print(f"Top orientation: {top_orientation}")
         if top_orientation == 'horizontal':
             n_top_panels = math.ceil(floor_width / y_max)
             top_length = top_space if top_space >= x_min and top_space <= x_max else x_max
@@ -137,12 +141,14 @@ def visualize_filled_floor(floor_width, floor_length, panels, cap):
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
     plt.show()
 
-for material in [gd.SST, gd.GLV]:
-    for gauge in [10, 12, 14, 16]:
-        cap = Capabilities(material, gauge)
-    
-        floor_width = cfg.x_in
-        floor_length = cfg.y_in
+# for material in [gd.SST, gd.GLV]:
+#     for gauge in [10, 12, 14, 16]:
+#         # material = cfg.material
+#         # gauge = 16
+#         cap = Capabilities(material, gauge)
 
-        panels = fill_floor_with_panels(floor_width, floor_length, cap)
-        visualize_filled_floor(floor_width, floor_length, panels, cap)
+#         floor_width = cfg.x_in
+#         floor_length = cfg.y_in
+
+#         panels = fill_floor_with_panels(floor_width, floor_length, cap)
+#         visualize_filled_floor(floor_width, floor_length, panels, cap)

@@ -99,7 +99,7 @@ def generate_frames(x, y, channel_type, n_frames=5, min_nodes=4, max_nodes=12, d
                         box_counter += 1  # Increment the box counter
 
                         # Add diagonal members only for every 3rd box
-                        if box_counter % 10 == 0:
+                        if box_counter % 3 == 0:
                             member_pairs.append([bottom_left, top_right])  # Diagonal 1
                             member_pairs.append([bottom_right, top_left])  # Diagonal 2
 

@@ -23,8 +23,11 @@ def obtain_APB_limits(cap):
         x_max = min(x_max, max_mass / y_min)
         y_max = min(y_max, max_mass / x_min)
 
+    if cap.gauge == 16 or cap.gauge_material == "14_GLV" or cap.gauge_material == "12_GLV":
+        return x_min, x_max - 5, y_min, y_max - 5  # Ensure minimum dimensions
+
     # Ensure minimum dimensions
-    return x_min, x_max - 5, y_min, y_max - 5
+    return x_min, x_max, y_min, y_max
 
 def obtain_MPB_limits(cap):
     x_min = 0
@@ -93,18 +96,18 @@ def visualize_filled_floor(floor_width, floor_length, panels):
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
     plt.show()
 
-cap = Capabilities(gd.SST, 12)
-x_min, x_max, y_min, y_max = obtain_APB_limits(cap)
-print(f"APB Limits: x_min={x_min}, x_max={x_max}, y_min={y_min}, y_max={y_max}")
+# cap = Capabilities(gd.SST, 12)
+# x_min, x_max, y_min, y_max = obtain_APB_limits(cap)
+# print(f"APB Limits: x_min={x_min}, x_max={x_max}, y_min={y_min}, y_max={y_max}")
 
-floor_width = cfg.x_in
-floor_length = cfg.y_in
-panels = fill_floor_with_panels(floor_width, floor_length, x_min, x_max, y_min, y_max)
+# floor_width = cfg.x_in
+# floor_length = cfg.y_in
+# panels = fill_floor_with_panels(floor_width, floor_length, x_min, x_max, y_min, y_max)
 
-print(f"Number of panels: {len(panels)}")
-print("Panel dimensions:")
-for panel in panels:
-    print(f"Width: {panel[0]}, Length: {panel[1]}")
+# print(f"Number of panels: {len(panels)}")
+# print("Panel dimensions:")
+# for panel in panels:
+#     print(f"Width: {panel[0]}, Length: {panel[1]}")
 
-# Visualize the filled floor
-visualize_filled_floor(floor_width, floor_length, panels)
+# # Visualize the filled floor
+# visualize_filled_floor(floor_width, floor_length, panels)

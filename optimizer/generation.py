@@ -11,6 +11,7 @@ from profiles import Profile
 import config as cfg
 import general_data as gd
 from structural_panels import calculate_wall_gauge
+from generate_floors import obtain_APB_limits
 
 def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
     """
@@ -120,11 +121,15 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
             n_panels = 1
 
         # 4. Calculate wall gauge
-        try:
-            wall_gauge = calculate_wall_gauge(panel_width, panel_length, cfg.water_height_in, wind_zone=cfg.wind_zone, material=cfg.material, display=False)
-        except Exception as e:
-            wall_gauge = None
-            print(f"Error calculating wall gauge: {e}")
+        wall_gauge = calculate_wall_gauge(panel_width, panel_length, cfg.water_height_in, wind_zone=cfg.wind_zone, material=cfg.material, display=False)
+        if wall_gauge < 10 or wall_gauge is None:
+            raise ValueError("Calculated wall gauge is too thick.")
+
+        cap = Capabilities(cfg.material, wall_gauge)
+        _, x_max, _, y_max = obtain_APB_limits(cap)
+        max_length = max(x_max, y_max)
+        n_panels = int(np.ceil(x / max_length))
+        panel_length = x / n_panels
 
         frames.append([
             nodes.copy(),
@@ -171,6 +176,6 @@ c_channel = Profile('GLV-M5', 10, 'Rectangular')
 for i, frame in enumerate(frames):
     try:
         q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
-        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q, display=False)
+        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q, display=True)
     except Exception as e:
         print(f"Error processing frame {i + 1}: {e}")

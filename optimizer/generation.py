@@ -170,7 +170,7 @@ def _get_member_range(n_nodes):
     return range(min_members, max_members//2 + 3)
 
 display = True
-n_nodes = 12
+n_nodes = 20
 frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=True)
 c_channel = Profile('GLV-M5', 10, 'Rectangular')
 for i, frame in enumerate(frames):

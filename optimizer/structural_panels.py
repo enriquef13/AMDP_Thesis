@@ -69,11 +69,13 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", 
                        key=lambda x: abs(x - t_required_in) if x >= t_required_in else float('inf')
                       ) if not thickness_warning else max(gauge_dict.keys())
     
+    
+    if thickness_warning:
+        print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
+        return None
+    
     if display:
-        if thickness_warning:
-            print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
-        else:
-            print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
+        print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
 
     return gauge_dict[t_closest_in]
 
@@ -126,12 +128,12 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
     t_closest_in = min(gauge_dict.keys(), 
                        key=lambda x: abs(x - t_required_in) if x >= t_required_in else float('inf')
                       ) if not thickness_warning else max(gauge_dict.keys())
+    if thickness_warning:
+        print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
+        return None
     
     if display:
-        if thickness_warning:
-            print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
-        else:
-            print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
+        print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
 
     return gauge_dict[t_closest_in]
 

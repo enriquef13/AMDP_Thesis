@@ -4,6 +4,7 @@ from skimage import measure # type: ignore
 import numpy as np # type: ignore
 import pandas as pd # type: ignore
 import xlwings as xw # type: ignore
+import general_data as gd
 
 class Capabilities:
     def __init__(self, material, gauge):
@@ -22,18 +23,8 @@ class Capabilities:
 
         self.gauge_material = f"{self.gauge}_{self.material}"
 
-        self.thickness = {
-            '16_GLV': 0.0635,
-            '14_GLV': 0.0785,
-            '12_GLV': 0.1084,
-            '10_GLV': 0.1382,
-            '8_GLV':  0.1624,
-            '16_SST': 0.0625,
-            '14_SST': 0.0781,
-            '12_SST': 0.1094,
-            '10_SST': 0.1406,
-            '8_SST':  0.1644
-        }
+        mat = gd.SST if self.material == 'SST' else gd.GLV
+        self.thickness = next((k for k, v in gd.GAUGES[mat].items() if v == self.gauge), None)
 
         self.max_flange_width = {
             '16_GLV': 149.6,
@@ -71,7 +62,7 @@ class Capabilities:
         self.max_sheet_width = 60
 
         self.APB_max_flange_length = 8
-        self.APB_min_flange_length = self.thickness[self.gauge_material] * 5
+        self.APB_min_flange_length = self.thickness* 5
         self.APB_min_throat_length = 15.75
         self.APB_max_flat_diagonal = 157.48
         self.APB_max_mass = 286.6

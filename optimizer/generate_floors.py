@@ -5,8 +5,7 @@ import math
 import matplotlib.pyplot as plt # type: ignore
 import matplotlib.patches as patches # type: ignore
 
-
-def fill_floor_with_panels(floor_width, floor_length, cap):
+def fill_floor_with_panels(floor_width, floor_length, cap, only_vertical=False):
     """
     Fill a floor area with the smallest number of panels, ensuring the entire area is covered.
     Panels can be rotated to minimize the number of panels. (Max. floor length: 165) 
@@ -38,7 +37,7 @@ def fill_floor_with_panels(floor_width, floor_length, cap):
     if top_space > 0:
         top_space = floor_length - bottom_length
         top_orientation = 'horizontal' if top_space >= x_min and top_space <= x_max else 'vertical'
-        # top_orientation = 'vertical'
+        if only_vertical: top_orientation = 'vertical'
         if top_orientation == 'horizontal':
             n_top_panels = math.ceil(floor_width / y_max)
             top_length = top_space if top_space >= x_min and top_space <= x_max else x_max
@@ -110,14 +109,14 @@ def visualize_filled_floor(floor_width, floor_length, panels, cap):
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
     plt.show()
 
-# for material in [gd.SST, gd.GLV]:
-#     for gauge in [10, 12, 14, 16]:
-#         # material = cfg.material
-#         # gauge = 16
-#         cap = Capabilities(material, gauge)
+for material in [gd.SST, gd.GLV]:
+    for gauge in [10, 12, 14, 16]:
+        # material = cfg.material
+        # gauge = 16
+        cap = Capabilities(material, gauge)
 
-#         floor_width = cfg.x_in
-#         floor_length = cfg.y_in
+        floor_width = cfg.x_in
+        floor_length = cfg.y_in
 
-#         panels = fill_floor_with_panels(floor_width, floor_length, cap)
-#         visualize_filled_floor(floor_width, floor_length, panels, cap)
+        panels = fill_floor_with_panels(floor_width, floor_length, cap)
+        visualize_filled_floor(floor_width, floor_length, panels, cap)

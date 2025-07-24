@@ -3,7 +3,7 @@ Code to calculate the required sheet thickness and channel spacing for a wall ba
 Allowable Stress Design (ASD) principles.
 
 Walls assumed to have 1 fixed edge (floor), 2 simply supported edges (walls), and 1 free edge (top).
-Floor assumed to have 4 fixed edges.
+Floor assumed to have 4 simply supported edges.
 
 Safety Factor applied to yield strength of materials.
 
@@ -115,9 +115,9 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
     if display: print(f"Thickness to avoid yield: {t_prevent_yield_in:.3f}\"")
 
     # Calculate thickness to avoid deflection
-    deflection_limit = 1 # inches
+    deflection_limit = a/240 # inches
     t_avoid_deflection_in = np.power((alpha * water_pressure_psi * b**4) / (E * deflection_limit), 1/3)
-    if display: print(f"Thickness to avoid {deflection_limit}\" deflection: {t_avoid_deflection_in:.3f}\"")
+    if display: print(f"Thickness to avoid {deflection_limit:.2f}\" deflection: {t_avoid_deflection_in:.3f}\"")
 
     # Required thickness is the maximum of the two
     t_required_in = max(t_prevent_yield_in, t_avoid_deflection_in)
@@ -150,10 +150,10 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
 
 # print(" ")
 
-# calculate_floor_gauge(
-#     width_in=43,              
-#     length_in=30,             
-#     water_height_in=14,     
-#     material=SST,
-#     display=display
-# )
+calculate_floor_gauge(
+    width_in=107,              
+    length_in=14,            
+    water_height_in=13,     
+    material=SST,
+    display=True
+)

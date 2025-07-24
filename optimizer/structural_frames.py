@@ -151,10 +151,11 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
             
             if distributed_bending_fail:
                 failed_members.add((i, j))
-                print(f"Top edge member {i}-{j} fails due to distributed load bending moment:")
-            print(f"  Distributed moment: {distributed_moment:.2f} lbf-in")
-            print(f"  Distributed bending stress: {distributed_bending_stress:.2f} psi")
-            print(f"  Allowable bending stress: {resistance_factor * Fy:.2f} psi")
+                if display:
+                    print(f"Top edge member {i}-{j} fails due to distributed load bending moment:")
+                    print(f"  Distributed moment: {distributed_moment:.2f} lbf-in")
+                    print(f"  Distributed bending stress: {distributed_bending_stress:.2f} psi")
+                    print(f"  Allowable bending stress: {resistance_factor * Fy:.2f} psi")
 
     # === Deflection Check ===
     deflection_limit_ratio = max_deflection_ratio  # e.g., 1/500 or 1/360
@@ -180,7 +181,8 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
         node_deflections[j] = mag_j
         rel_disp = np.sqrt((u_j - u_i)**2 + (v_j - v_i)**2)
         max_deflection = max(mag_i, mag_j, rel_disp)
-        print(f"Member {i}-{j}: Max node deflection = {max_deflection:.4f} in, Deflection limit = {limit:.4f} in")
+        if display:
+            print(f"Member {i}-{j}: Max node deflection = {max_deflection:.4f} in, Deflection limit = {limit:.4f} in")
 
         if mag_i > limit or mag_j > limit or rel_disp > limit:
             deflected_members.append((i, j))
@@ -189,9 +191,10 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False):
     if deflected_members:
         print(f"\nMembers with node deflections exceeding L/{int(1/deflection_limit_ratio)}:")
         for i, j in deflected_members:
-            print(f"Member {i}-{j} | L = {np.linalg.norm(np.array(nodes[j]) - np.array(nodes[i])):.2f} in")
-            print(f"  Node {i} deflection = {node_deflections[i]*1000:.2f} mils")
-            print(f"  Node {j} deflection = {node_deflections[j]*1000:.2f} mils")
+            if display:
+                print(f"Member {i}-{j} | L = {np.linalg.norm(np.array(nodes[j]) - np.array(nodes[i])):.2f} in")
+                print(f"  Node {i} deflection = {node_deflections[i]*1000:.2f} mils")
+                print(f"  Node {j} deflection = {node_deflections[j]*1000:.2f} mils")
     else:
         print(f"\nAll member-end node deflections are within L/{int(1/deflection_limit_ratio)} limit.")
 

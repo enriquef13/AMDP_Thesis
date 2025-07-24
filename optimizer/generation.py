@@ -4,17 +4,19 @@ Generates structurally-feasible configurations of nodes and members within speci
 """
 
 import random
-import numpy as np
+import numpy as np # type: ignore
 from structural_frames import calculate_wall_frame_structural, distribute_load
 from capabilities import Capabilities
 from profiles import Profile
 import config as cfg
 import general_data as gd
+from structural_panels import calculate_wall_gauge
 
 def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
     """
     Generate all possible configurations of nodes and members.
-    Returns a list of tuples, each containing the number of nodes and members.
+    Returns a list of tuples, each containing the number of nodes and members,
+    as well as panel information and wall gauge.
     """
 
     corner_nodes = {0: [0, 0], 1: [x, 0], 2: [0, y], 3: [x, y]}
@@ -99,13 +101,48 @@ def generate_frames(x, y, n_frames=5, min_nodes=4, max_nodes=12, display=False):
                             member_pairs.append([bottom_left, top_right])  # Diagonal 1
                             member_pairs.append([bottom_right, top_left])  # Diagonal 2
 
-        frames.append([nodes.copy(), member_pairs.copy()])
+        # --- PANEL EXTRACTION AND WALL GAUGE CALCULATION ---
+        # 1. Distance between vertical members = panel length
+        # Find all unique x positions of bottom nodes (verticals)
+        x_positions = sorted([nodes[idx][0] for idx in bottom_id_nodes])
+        if len(x_positions) > 1:
+            panel_length = x_positions[1] - x_positions[0]
+        else:
+            panel_length = x  # fallback
+
+        # 2. Max y as panel width
+        panel_width = max([n[1] for n in nodes.values()])
+
+        # 3. Number of panels = max x / panel_length
+        if panel_length > 0:
+            n_panels = int(np.ceil(x / panel_length))
+        else:
+            n_panels = 1
+
+        # 4. Calculate wall gauge
+        try:
+            wall_gauge = calculate_wall_gauge(panel_width, panel_length, cfg.water_height_in, wind_zone=cfg.wind_zone, material=cfg.material, display=False)
+        except Exception as e:
+            wall_gauge = None
+            print(f"Error calculating wall gauge: {e}")
+
+        frames.append([
+            nodes.copy(),
+            member_pairs.copy(),
+            {
+                "n_panels": n_panels,
+                "panel_length": panel_length,
+                "panel_width": panel_width,
+                "wall_gauge": wall_gauge
+            }
+        ])
 
     if display:
         for i, frame in enumerate(frames):
             print(f"Frame {i + 1}:")
             print(f"  Nodes: {frame[0]}")
             print(f"  Members: {frame[1]}")
+            print(f"  Panels: {frame[2]}")
 
     return frames
 
@@ -128,12 +165,12 @@ def _get_member_range(n_nodes):
     return range(min_members, max_members//2 + 3)
 
 display = True
-n_nodes = 8
-frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=False)
+n_nodes = 12
+frames = generate_frames(cfg.x_in, cfg.z_in, n_frames=1, min_nodes=n_nodes, max_nodes=n_nodes, display=True)
 c_channel = Profile('GLV-M5', 10, 'Rectangular')
 for i, frame in enumerate(frames):
     try:
         q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
-        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q, display=display)
+        calculate_wall_frame_structural(frame[0], frame[1], c_channel, q=q, display=False)
     except Exception as e:
         print(f"Error processing frame {i + 1}: {e}")

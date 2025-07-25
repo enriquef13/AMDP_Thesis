@@ -4,7 +4,8 @@ import general_data as gd
 import math
 import matplotlib.pyplot as plt # type: ignore
 import matplotlib.patches as patches # type: ignore
-from structural_panels import calculate_floor_gauge
+from structural_panels import calculate_floor_gauge, calculate_wall_gauge
+import numpy as np
 
 def fill_floor_with_panels(floor_width, floor_length, cap, only_vertical=False):
     """
@@ -53,38 +54,99 @@ def fill_floor_with_panels(floor_width, floor_length, cap, only_vertical=False):
 
     return panels
 
-def max_panel_length_for_gauge(water_height_in, material=gd.SST, gauge=16):
+def plot_panel_thicknesses(max_width, max_length, step_size=1, water_height_in=cfg.water_height_in, material=cfg.material):
     """
-    Get the maximum panel dimensions for a given gauge and water height.
+    Plots heatmaps showing the required panel thickness and gauge for a range of panel dimensions,
+    given a water height and material. Useful for visualizing how panel size affects required gauge and thickness.
 
     Parameters:
         water_height_in (float): Height of water inside the panel (inches).
-        material (str): Material type (SST or GLV).
-        gauge (int): Gauge number.
+        material (str): Material type (e.g., SST or GLV).
 
     Returns:
-        tuple: Maximum panel dimensions (width, length) in inches.
+        None
     """
-    min_width = 1
-    min_length = 1
-    max_width = 50
-    max_length = 500
+    min_gauge = min(gd.GAUGES[material].values())
+    max_gauge = max(gd.GAUGES[material].values())
 
-    last_gauge = 100
-    max_panel_length = 0
-    max_panel_width = 0
-    for i in range(min_length, max_length + 1):
-        for j in range(min_width, max_width + 1):
-            gauge_required = calculate_floor_gauge(j, i, water_height_in, material)
-            last_gauge = gauge_required if gauge_required else last_gauge
-            if max_panel_length < i: max_panel_length = i
-            if max_panel_width < j: max_panel_width = j
-            if gauge > last_gauge:
-                print(f"Maximum panel dimensions for gauge {gauge} and water height {water_height_in}: {max_panel_width} x {max_panel_length}")
-                return (max_panel_width, max_panel_length)
+    # Initialize 2D arrays to store gauge and thickness values
+    thickness_array, gauge_array = get_thickness_and_gauge_array(max_width=max_width, max_length=max_length, 
+                                                                 step_size=step_size, water_height_in=water_height_in, 
+                                                                 material=material)
+    
+    thickness_array = np.transpose(thickness_array)
+    gauge_array = np.transpose(gauge_array)
 
-    return None
+    fig, axes = plt.subplots(1, 2, figsize=(16, 8))
 
+    title_font_size = 16
+    label_font_size = 14
+    axes_font_size = 12
+
+    # Plot thickness heatmap
+    ax1 = axes[0]
+    im1 = ax1.imshow(thickness_array, origin='lower', cmap='viridis',
+                     extent=[1, max_width, 1, max_length], aspect='auto')
+    ax1.set_title(f'Heatmap of Required Thickness.\nMaterial: {material}, Water Level: {water_height_in}\"', 
+                  fontsize=title_font_size, fontweight='bold')
+    ax1.set_xlabel('Floor Width (inches)', fontsize=label_font_size)
+    ax1.set_ylabel('Floor Length (inches)', fontsize=label_font_size)
+    ax1.tick_params(axis='both', labelsize=axes_font_size)
+    cbar1 = fig.colorbar(im1, ax=ax1)
+    cbar1.set_label('Thickness (inches)', fontsize=label_font_size)
+    cbar1.ax.tick_params(labelsize=axes_font_size)
+
+    # Plot gauge heatmap
+    ax2 = axes[1]
+    im2 = ax2.imshow(gauge_array, origin='lower', cmap='viridis',
+                     extent=[1, max_width, 1, max_length], vmin=min_gauge, vmax=max_gauge, aspect='auto')
+    ax2.set_title(f'Heatmap of Gauge Required.\nMaterial: {material}, Water Level: {water_height_in}\"', 
+                  fontsize=title_font_size, fontweight='bold')
+    ax2.set_xlabel('Floor Width (inches)', fontsize=label_font_size)
+    ax2.set_ylabel('Floor Length (inches)', fontsize=label_font_size)
+    ax2.tick_params(axis='both', labelsize=axes_font_size)
+    cbar2 = fig.colorbar(im2, ax=ax2)
+    cbar2.set_label('Gauge', fontsize=label_font_size)
+    cbar2.ax.tick_params(labelsize=axes_font_size)
+
+    plt.tight_layout()
+    plt.show()
+
+def get_thickness_and_gauge_array(max_width, max_length, step_size=1, water_height_in=cfg.water_height_in, material=cfg.material):
+    """
+    Generate a 2D array of required thickness and gauge for a range of panel dimensions.
+
+    Parameters:
+        max_width (float): Maximum width of the panel (inches).
+        max_length (float): Maximum length of the panel (inches).
+        step_size (float): Step size for generating dimensions.
+        water_height_in (float): Height of water inside the panel (inches).
+        material (str): Material type (e.g., SST or GLV).
+
+    Returns:
+        tuple: Two 2D numpy arrays for thickness and gauge.
+    """
+    gauge_matrix = []
+    thickness_matrix = []
+
+    min_gauge = min(gd.GAUGES[material].values())
+
+    for i in np.arange(1, max_width + step_size, step_size):
+        gauge_row = []
+        thickness_row = []
+        for j in np.arange(1, max_length + step_size, step_size):
+            thickness_required, gauge_required = calculate_floor_gauge(i, j, water_height_in, material)
+            # Append NaN for gauge if below 8, but always append thickness
+            gauge_row.append(gauge_required if gauge_required and gauge_required >= min_gauge else float('nan'))
+            thickness_row.append(thickness_required if thickness_required else float('nan'))
+
+        gauge_matrix.append(gauge_row)
+        thickness_matrix.append(thickness_row)
+
+    thickness_array = np.array(thickness_matrix)
+    gauge_array = np.array(gauge_matrix)
+
+    return thickness_array, gauge_array
 
 def visualize_filled_floor(floor_width, floor_length, panels, cap):
     """
@@ -104,7 +166,7 @@ def visualize_filled_floor(floor_width, floor_length, panels, cap):
     ax.set_xlim(0, floor_width)
     ax.set_ylim(0, floor_length)
     ax.set_aspect('equal', adjustable='box')
-    ax.set_title("Floor Area Filled with Panels. Material: {}, Gauge: {}".format(material, gauge), fontsize=14, fontweight='bold')
+    ax.set_title("Floor Area Filled with Panels.\nMaterial: {}, Gauge: {}".format(material, gauge), fontsize=14, fontweight='bold')
     ax.set_xlabel("Width")
     ax.set_ylabel("Length")
     
@@ -143,17 +205,21 @@ def visualize_filled_floor(floor_width, floor_length, panels, cap):
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
     plt.show()
 
-# for material in [gd.SST, gd.GLV]:
-#     for gauge in [10, 12, 14, 16]:
-#         # material = cfg.material
-#         # gauge = 16
-#         cap = Capabilities(material, gauge)
+thickness_array, gauge_array = get_thickness_and_gauge_array(max_width=cfg.x_in, max_length=cfg.y_in, 
+                                                             step_size=1)
 
-#         floor_width = cfg.x_in
-#         floor_length = cfg.y_in
 
-#         panels = fill_floor_with_panels(floor_width, floor_length, cap, only_vertical=True)
-#         visualize_filled_floor(floor_width, floor_length, panels, cap)
 
-max_panel_length_for_gauge(cfg.water_height_in, material=cfg.material, gauge=10)
-calculate_floor_gauge(101, 24, cfg.water_height_in, material=cfg.material, display=True)
+for material in [gd.SST, gd.GLV]:
+    for gauge in [10, 12, 14, 16]:
+        cap = Capabilities(material, gauge)
+
+
+
+        floor_width = cfg.x_in
+        floor_length = cfg.y_in
+
+        panels = fill_floor_with_panels(floor_width, floor_length, cap, only_vertical=False)
+        visualize_filled_floor(floor_width, floor_length, panels, cap)
+
+plot_panel_thicknesses(max_width=cfg.x_in, max_length=cfg.y_in, step_size=1)

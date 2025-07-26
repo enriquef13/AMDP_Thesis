@@ -2,11 +2,13 @@ import numpy as np # type: ignore
 import pandas as pd # type: ignore
 from scipy.linalg import solve # type: ignore
 import matplotlib.pyplot as plt # type: ignore
+import matplotlib.patches as patches # type: ignore
+from matplotlib.lines import Line2D # type: ignore
 from profiles import Profile
 import general_data as gd
 import config as cfg
 
-def calculate_wall_frame_structural(nodes, members, channel, q, display=False, plot=False):
+def calculate_wall_frame_structural(nodes, members, channel, q, display=False, plot=False, title=None, metrics=None):
     """
     Calculate the structural properties of a wall based on its nodes and members.
     
@@ -14,6 +16,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
         nodes: Dictionary of node coordinates in the format {idx1: [x1, y1], idx2: [x2, y2], ...}.
         members: List of member definitions in the format [[node1_idx, node2_idx], [node2_idx, node3_idx], ...].
         channel: Profile object representing the channel section.
+        panel_material: Material of the wall panel.
         q: Uniform distributed load applied to the frame (lbf/in).
     """
 
@@ -30,19 +33,15 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
 
     # Filter out invalid members (non-existent in nodes dictionary)
     members = [m for m in members if m[0] in nodes and m[1] in nodes]
-
     top_edge_pairs = _get_top_edge_pairs(nodes)
 
-    # === Setup ===
     node_ids = list(nodes.keys())
-    num_nodes = len(node_ids)
     dof_per_node = 3
-    total_dof = num_nodes * dof_per_node
+    total_dof = len(nodes) * dof_per_node
 
     K_global = np.zeros((total_dof, total_dof))
     F_global = np.zeros(total_dof)
 
-    # === Assemble Global Stiffness Matrix ===
     for (i, j) in members:
         xi, yi = nodes[i]
         xj, yj = nodes[j]
@@ -52,7 +51,6 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
             for n in range(6):
                 K_global[dof_map[m], dof_map[n]] += k_elem[m, n]
 
-    # === Apply Uniform Load on Top Edge (factored) ===
     node_force = dict.fromkeys(nodes.keys(), 0.0)
     for i, j in top_edge_pairs:
         xi, _ = nodes[i]
@@ -61,31 +59,17 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
         load = load_factor * q * L
         node_force[i] += load / 2
         node_force[j] += load / 2
-    
     for node_id, force in node_force.items():
         F_global[3*node_id + 1] -= force
 
-    # === Apply Boundary Conditions ===
-    fixed_dofs = []
-
-    for node_id, (x, y) in nodes.items():
-        # Fix nodes on the bottom edge
-        if y == 0:
-            fixed_dofs += [3*node_id, 3*node_id + 1, 3*node_id + 2]
-
-    # All other nodes are free (no need to specify anything else)
-    free_dofs = [i for i in range(len(nodes) * 3) if i not in fixed_dofs]
-
-    # Extract the reduced stiffness matrix and force vector for free DOFs
+    fixed_dofs = [3*node_id + dof for node_id, (_, y) in nodes.items() if y == 0 for dof in range(3)]
+    free_dofs = [i for i in range(total_dof) if i not in fixed_dofs]
     K_ff = K_global[np.ix_(free_dofs, free_dofs)]
     F_f = F_global[free_dofs]
-
-    # === Solve ===
     u_f = solve(K_ff, F_f)
     u_global = np.zeros(total_dof)
     u_global[free_dofs] = u_f
 
-    # === Internal Forces per Member ===
     internal_results = []
     failed_members = set()
 
@@ -106,7 +90,6 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
 
         buckling_load = (np.pi**2 * E * I) / (K * L)**2
         buckling_fail = axial < 0 and abs(axial) > resistance_factor * buckling_load
-
         axial_fail = abs(axial_stress) > resistance_factor * Fy
         shear_fail = abs(shear_stress) > resistance_factor * 0.6 * Fy
         bending_fail = abs(bending_stress) > resistance_factor * Fy
@@ -127,38 +110,20 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
             "Fails?": failed
         })
 
-    # === Additional Check for Horizontal Top Edge Members ===
     max_y = max(n[1] for n in nodes.values())
-    
     for i, j in members:
         xi, yi = nodes[i]
         xj, yj = nodes[j]
-        
-        # Check if this is a horizontal member along the top edge
-        if yi == max_y and yj == max_y and yi == yj:  # Both nodes at same Y (top edge) and horizontal
-            L = abs(xj - xi)  # Length of horizontal member
-            
-            # Calculate bending moment due to distributed load
-            # For a simply supported beam with uniform load: M_max = q*L^2/8
-            # Using q/2 as specified in the request (half the load)
-            distributed_moment = q * L**2 / 8
-            
-            # Calculate bending stress from distributed load
-            distributed_bending_stress = distributed_moment * c / I
-            
-            # Check if this additional bending stress causes failure
-            distributed_bending_fail = abs(distributed_bending_stress) > resistance_factor * Fy
-            
-            if distributed_bending_fail:
+        if yi == yj == max_y:
+            L = abs(xj - xi)
+            M = q * L**2 / 8
+            distributed_bending_stress = M * c / I
+            if abs(distributed_bending_stress) > resistance_factor * Fy:
                 failed_members.add((i, j))
                 if display:
-                    print(f"Top edge member {i}-{j} fails due to distributed load bending moment:")
-                    print(f"  Distributed moment: {distributed_moment:.2f} lbf-in")
-                    print(f"  Distributed bending stress: {distributed_bending_stress:.2f} psi")
-                    print(f"  Allowable bending stress: {resistance_factor * Fy:.2f} psi")
+                    print(f"Top edge member {i}-{j} fails due to distributed load bending moment.")
 
-    # === Deflection Check ===
-    deflection_limit_ratio = max_deflection_ratio  # e.g., 1/500 or 1/360
+    deflection_limit_ratio = max_deflection_ratio
     node_deflections = {}
     deflected_members = []
 
@@ -167,63 +132,130 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
         xj, yj = nodes[j]
         L = np.sqrt((xj - xi)**2 + (yj - yi)**2)
         limit = deflection_limit_ratio * L
-
-        # Displacement vector at each node
-        u_i = u_global[3*i]
-        v_i = u_global[3*i+1]
-        u_j = u_global[3*j]
-        v_j = u_global[3*j+1]
-
+        u_i, v_i = u_global[3*i], u_global[3*i+1]
+        u_j, v_j = u_global[3*j], u_global[3*j+1]
         mag_i = np.sqrt(u_i**2 + v_i**2)
         mag_j = np.sqrt(u_j**2 + v_j**2)
+        rel_disp = np.sqrt((u_j - u_i)**2 + (v_j - v_i)**2)
+        max_deflection = max(mag_i, mag_j, rel_disp)
 
         node_deflections[i] = mag_i
         node_deflections[j] = mag_j
-        rel_disp = np.sqrt((u_j - u_i)**2 + (v_j - v_i)**2)
-        max_deflection = max(mag_i, mag_j, rel_disp)
-        if display:
-            print(f"Member {i}-{j}: Max node deflection = {max_deflection:.4f} in, Deflection limit = {limit:.4f} in")
 
         if mag_i > limit or mag_j > limit or rel_disp > limit:
             deflected_members.append((i, j))
 
-    # === Report ===
+        if display:
+            print(f"Member {i}-{j}: Max deflection = {max_deflection:.4f} in, Limit = {limit:.4f} in")
+
     if display:
         if deflected_members:
-            print(f"\nMembers with node deflections exceeding L/{int(1/deflection_limit_ratio)}:")
+            print(f"\nMembers exceeding L/{int(1/deflection_limit_ratio)}:")
             for i, j in deflected_members:
-                if display:
-                    print(f"Member {i}-{j} | L = {np.linalg.norm(np.array(nodes[j]) - np.array(nodes[i])):.2f} in")
-                    print(f"  Node {i} deflection = {node_deflections[i]*1000:.2f} mils")
-                    print(f"  Node {j} deflection = {node_deflections[j]*1000:.2f} mils")
+                print(f"Member {i}-{j}")
         else:
-            print(f"\nAll member-end node deflections are within L/{int(1/deflection_limit_ratio)} limit.")
+            print("\nAll deflections within limits.")
 
-        # === Evaluate Beam Deflection ===
-        # Display internal forces
         df_results = pd.DataFrame(internal_results)
         print(df_results.round(3))
 
-    # === Visualize the 2D Structure with Failure Highlight ===
-    if plot:
-        plt.figure(figsize=(8, 6))
-        for i, j in members:
-            x = [nodes[i][0], nodes[j][0]]
-            y = [nodes[i][1], nodes[j][1]]
-            color = 'red' if (i, j) in failed_members or (j, i) in failed_members else 'black'
-            plt.plot(x, y, color=color, lw=2)
+        if plot:
+            fig, ax = plt.subplots(figsize=(8, 6))
 
-        for idx, (x, y) in nodes.items():
-            plt.plot(x, y, 'ro')
-            plt.text(x + 0.1, y + 0.1, f'{idx}', fontsize=9)
+            # Plot members
+            for i, j in members:
+                x = [nodes[i][0], nodes[j][0]]
+                y = [nodes[i][1], nodes[j][1]]
+                color = 'red' if (i, j) in failed_members or (i, j) in deflected_members else 'black'
+                ax.plot(x, y, color=color, lw=2)
 
-        plt.title("2D Frame Structure")
-        plt.xlabel("X (in)")
-        plt.ylabel("Y (in)")
-        plt.grid(True)
-        plt.axis("equal")
-        plt.tight_layout()
-        plt.show()
+            # Plot nodes and labels
+            for idx, (x, y_val) in nodes.items():
+                ax.plot(x, y_val, 'ro')
+                ax.text(x + 0.2, y_val + 0.2, f'{idx}', fontsize=8)
+
+            # Title and subtitle
+            main_title = title or "2D Frame Structure"
+            fig.suptitle(main_title, fontsize=18, y=0.96)
+
+            if metrics:
+                channel_info = (
+                    f"Channel: {channel.gauge} ga {channel.material} {channel.profile_type}, "
+                    f"Member Mass: {metrics['total_member_mass']:.1f} lb"
+                )
+                panel_info = (
+                    f"Panel: {metrics['wall_gauge']} ga {metrics.get('panel_material', 'N/A')}, "
+                    f"Panel Mass: {metrics['total_panel_mass']:.1f} lb"
+                )
+                member_mass = metrics['total_member_mass']
+                panel_mass = metrics['total_panel_mass']
+                total_mass = member_mass + panel_mass
+                member_ratio = int(round(100 * member_mass / total_mass))
+                panel_ratio = 100 - member_ratio
+                usage_info = (
+                    f"Total Mass: {total_mass:.1f} lb"
+                )
+                # Add colored ratio text with adjusted positions to avoid overlap
+                fig.text(0.5, 0.91, channel_info, fontsize=14, ha='center', va='top', color='red')
+                fig.text(0.5, 0.87, panel_info, fontsize=14, ha='center', va='top', color='blue')
+                # Use separate fig.text for colored ratios
+                fig.text(0.45, 0.83, f"{usage_info}   Mass Ratio: ", fontsize=14, ha='center', va='top', color='black')
+                fig.text(0.66, 0.83, f"{member_ratio}%", fontsize=14, ha='left', va='top', color='red')
+                fig.text(0.71, 0.83, " | ", fontsize=14, ha='left', va='top', color='black')
+                fig.text(0.73, 0.83, f"{panel_ratio}%", fontsize=14, ha='left', va='top', color='blue')
+
+            # Add panel rectangles and dotted boundaries
+            if metrics:
+                panel_length = metrics.get('panel_length', None)
+                x_min = min(n[0] for n in nodes.values())
+                x_max = max(n[0] for n in nodes.values())
+                y_min = min(n[1] for n in nodes.values())
+                y_max = max(n[1] for n in nodes.values())
+
+                if panel_length:
+                    current_x = x_min
+                    panel_count = int(np.floor((x_max - x_min) / panel_length))
+                    
+                    for i in range(panel_count):
+
+                        rect = patches.Rectangle(
+                            (current_x, y_min), panel_length, y_max - y_min,
+                            linewidth=5, linestyle='--', edgecolor='blue', facecolor='lightblue', alpha=0.25,
+                        )
+                        ax.add_patch(rect)
+
+                        current_x += panel_length
+
+            # Axes and grid adjustments
+            y_vals = [n[1] for n in nodes.values()]
+            y_min_data, y_max_data = min(y_vals), max(y_vals)
+            y_pad = 0.1 * (y_max_data - y_min_data) if y_max_data > y_min_data else 5
+            ax.set_ylim(y_min_data - y_pad, y_max_data + y_pad)
+
+            ax.set_xlabel("X (in)")
+            ax.set_ylabel("Y (in)")
+            ax.grid(True)
+            ax.set_ylim(y_min_data - 20, y_max_data + 20)
+            
+            # Add legend
+            legend_elements = [
+                Line2D([0], [0], color='black', lw=2, label='Channels'),
+                Line2D([0], [0], color='blue', lw=2, linestyle='--', alpha=0.5, label='Panels')
+            ]
+            ax.legend(handles=legend_elements, loc='upper right', fontsize=10)
+
+            plt.subplots_adjust(top=0.75)  
+
+            plt.show()
+
+
+
+
+
+
+    # Return structural soundness
+    return len(failed_members) == 0 and len(deflected_members) == 0
+
 
 def _get_top_edge_pairs(nodes):
     # Step 1: Find max y

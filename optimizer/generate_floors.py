@@ -107,7 +107,7 @@ def plot_panel_thicknesses(max_width=cfg.x_in, max_length=cfg.y_in, step_size=1,
     max_gauge = max(gd.GAUGES[material].values())
 
     # Initialize 2D arrays to store gauge and thickness values
-    thickness_array, gauge_array = get_thickness_and_gauge_array(max_width=max_width, max_length=max_length, 
+    thickness_array, gauge_array = _get_thickness_and_gauge_array(max_width=max_width, max_length=max_length, 
                                                                  step_size=step_size, water_height_in=water_height_in, 
                                                                  material=material, floor=floor)
     
@@ -149,7 +149,7 @@ def plot_panel_thicknesses(max_width=cfg.x_in, max_length=cfg.y_in, step_size=1,
     plt.tight_layout()
     plt.show()
 
-def get_thickness_and_gauge_array(max_width=cfg.x_in, max_length=cfg.y_in, step_size=1, 
+def _get_thickness_and_gauge_array(max_width=cfg.x_in, max_length=cfg.y_in, step_size=1, 
                                   water_height_in=cfg.water_height_in, material=cfg.material,
                                   floor=True):
     """
@@ -195,7 +195,7 @@ def obtain_channels(panels, gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, 
     c_cap = Capabilities(material=gd.FLOOR_BEAMS.material, gauge=gauge)
     channel_density = c_cap.density[c_cap.gauge_material]
 
-    _, gauge_array = get_thickness_and_gauge_array(max_width=floor_width, 
+    _, gauge_array = _get_thickness_and_gauge_array(max_width=floor_width, 
                                                    max_length=floor_length, 
                                                    step_size=step_size)
     

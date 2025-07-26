@@ -249,8 +249,8 @@ def _add_diagonals(nodes, bottom_ids, top_ids, existing_members, plan="A"):
 channel_materials = [gd.GLV, gd.SST]
 panel_materials = [cfg.material]
 node_options = [4, 6, 8, 10, 12, 14, 16]
-gauge_options = [8, 10, 12, 14, 16]
-profile_options = ['C', 'Rectangular', 'Hat', 'Double C']
+gauge_options = [8, 10, 12, 14, 16, 18]
+profile_options = ['C', 'Rectangular', 'Hat', 'Double C', 'I']
 diagonal_plans = ['A', 'B', 'C', 'D']
 
 results = []

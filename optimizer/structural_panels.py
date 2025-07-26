@@ -3,7 +3,7 @@ Code to calculate the required sheet thickness and channel spacing for a wall ba
 Allowable Stress Design (ASD) principles.
 
 Walls assumed to have 1 fixed edge (floor), 2 simply supported edges (walls), and 1 free edge (top).
-Floor assumed to have 4 fixed edges.
+Floor assumed to have 4 simply supported edges.
 
 Safety Factor applied to yield strength of materials.
 
@@ -22,7 +22,24 @@ from general_data import MATERIALS, GAUGES, BETA_FLOOR, ALPHA_FLOOR, BETA_WALL, 
 from general_data import WIND_NTC, WIND_TC, WIND_TCM, SST, GLV
 from config import z_in
 
-def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", material="SST-M3", display=False):
+def _interpolate_key(a_b, dictionary):
+    d_keys = sorted(dictionary.keys())
+    if a_b < d_keys[0]:
+        # Interpolate between the smallest key's value and 0
+        return dictionary[d_keys[0]] * (a_b / d_keys[0])
+    elif a_b >= d_keys[-1]:
+        # If a_b is equal to the largest key, use the corresponding value
+        return dictionary[d_keys[-1]]
+    else:
+        # Find the two closest keys for interpolation
+        lower_key = max(k for k in d_keys if k <= a_b)
+        upper_key = min(k for k in d_keys if k > a_b)
+        lower_value = dictionary[lower_key]
+        upper_value = dictionary[upper_key]
+        # Linear interpolation
+        return lower_value + (upper_value - lower_value) * ((a_b - lower_key) / (upper_key - lower_key))
+
+def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone=WIND_NTC, material=SST, display=False):
     """
     Calculate required sheet thickness for a wall.
 
@@ -53,10 +70,12 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", 
 
     # Find closest aspect ratio to match BETA_WALL table indices
     a_b = width_in / height_in  # Aspect ratio of the wall
-    a_b = min(BETA_WALL.keys(), 
-              key=lambda x: abs(x - a_b) if x >= a_b else float('inf')
-             ) if a_b <= max(BETA_WALL.keys()) else max(BETA_WALL.keys())
-    beta = BETA_WALL[a_b]
+    if a_b > max(BETA_WALL.keys()):
+        if display:
+            print(f"Aspect ratio {a_b:.2f} exceeds maximum of {max(BETA_WALL.keys()):.2f}. Returning None.")
+        return None, None
+
+    beta = _interpolate_key(a_b, BETA_WALL)
 
     # Calculate required thickness using plate bending formula
     t_required_in = np.sqrt((beta * total_pressure_psi * height_in**2) / (S_allow))
@@ -69,18 +88,18 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone="NTC", 
                        key=lambda x: abs(x - t_required_in) if x >= t_required_in else float('inf')
                       ) if not thickness_warning else max(gauge_dict.keys())
     
-    
     if thickness_warning:
-        print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
-        return None
+        if display:
+            print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
+        return t_required_in, None
     
     if display:
         print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
 
-    return gauge_dict[t_closest_in]
+    return t_required_in, gauge_dict[t_closest_in]
 
 
-def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3", display=False):
+def calculate_floor_gauge(width_in, length_in, water_height_in, material=SST, display=False):
     """
     Calculate required thickness for a floor panel.
 
@@ -103,21 +122,18 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
 
     a = max(width_in, length_in)
     b = min(width_in, length_in)
-    a_b = a / b  # Aspect ratio of the floor
-    a_b = min(BETA_FLOOR.keys(), 
-              key=lambda x: abs(x - a_b) if x >= a_b else float('inf')
-             ) if a_b <= max(BETA_FLOOR.keys()) else max(BETA_FLOOR.keys())
-    beta = BETA_FLOOR[a_b]
-    alpha = ALPHA_FLOOR[a_b]
+    a_b = a / b  # Aspect ratio of the floor    
+    beta = _interpolate_key(a_b, BETA_FLOOR)
+    alpha = _interpolate_key(a_b, ALPHA_FLOOR)
 
     # Calculate required thickness using allowable stress
     t_prevent_yield_in = np.sqrt((beta * water_pressure_psi * b**2) / (S_allow))
     if display: print(f"Thickness to avoid yield: {t_prevent_yield_in:.3f}\"")
 
     # Calculate thickness to avoid deflection
-    deflection_limit = 1 # inches
+    deflection_limit = a/240 # inches
     t_avoid_deflection_in = np.power((alpha * water_pressure_psi * b**4) / (E * deflection_limit), 1/3)
-    if display: print(f"Thickness to avoid {deflection_limit}\" deflection: {t_avoid_deflection_in:.3f}\"")
+    if display: print(f"Thickness to avoid {deflection_limit:.2f}\" (L/240) deflection: {t_avoid_deflection_in:.3f}\"")
 
     # Required thickness is the maximum of the two
     t_required_in = max(t_prevent_yield_in, t_avoid_deflection_in)
@@ -129,14 +145,14 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
                        key=lambda x: abs(x - t_required_in) if x >= t_required_in else float('inf')
                       ) if not thickness_warning else max(gauge_dict.keys())
     if thickness_warning:
-        print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
-        return None
+        if display:
+            print(f"WARNING! Required thickness {t_required_in:.3f}\" exceeds maximum thickness {max(gauge_dict.keys()):.3f}\" for {material}.")
+        return t_required_in, None
     
     if display:
         print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
 
-    return gauge_dict[t_closest_in]
-
+    return t_required_in, gauge_dict[t_closest_in]
 
 # display = True
 # calculate_wall_gauge(
@@ -151,9 +167,9 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material="SST-M3
 # print(" ")
 
 # calculate_floor_gauge(
-#     width_in=43,              
-#     length_in=30,             
-#     water_height_in=14,     
+#     width_in=107,              
+#     length_in=14,            
+#     water_height_in=13,     
 #     material=SST,
-#     display=display
+#     display=True
 # )

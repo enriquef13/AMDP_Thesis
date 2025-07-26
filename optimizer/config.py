@@ -11,6 +11,6 @@ wind_zone = gd.WIND_NTC                         # Wind zone classification (gd.W
 top_load = 40000 # 11540.0584                           # Uniform load on top edges (lbf)
 
 # # Dimensions for GAC CWB
-# x_in = 258
-# y_in = 142
+# x_in = 215
+# y_in = 137
 # z_in = 26

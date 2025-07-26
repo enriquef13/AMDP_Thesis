@@ -1,9 +1,3 @@
-import matplotlib.pyplot as plt # type: ignore
-from matplotlib.colors import LinearSegmentedColormap # type: ignore
-from skimage import measure # type: ignore
-import numpy as np # type: ignore
-import pandas as pd # type: ignore
-import xlwings as xw # type: ignore
 import math
 
 class Capabilities:
@@ -13,14 +7,6 @@ class Capabilities:
         self._extract_data()
 
     def _extract_data(self):
-        self.cost_cells = {'Total Cost': 'U'}
-
-        self.input_cols = {
-            'length': 'L', 'width': 'M', 'quantity': 'C', 'process1': 'D', 'process2': 'E',
-            'material_code': 'F', 'gauge': 'G', 'fastener_count': 'H', 
-            'perimeter_plus_fastener': 'I', 'J': 'J', 'K': 'K', 'N': 'N'
-        }
-
         gauges = {
             "SST-M3": {18: 0.047, 16: 0.059, 14: 0.075, 12: 0.101, 10: 0.128, 8: 0.158},
             "GLV-M5": {18: 0.042, 16: 0.053, 14: 0.066, 12: 0.096, 10: 0.129, 8: 0.157}
@@ -32,11 +18,13 @@ class Capabilities:
         self.thickness = gauges[mat][self.gauge]
 
         self.max_flange_width = {
+            '18_GLV': 149.6,
             '16_GLV': 149.6,
             '14_GLV': 149.6,
             '12_GLV': 149.6,
             '10_GLV': 118.11,
             '8_GLV':  0,
+            '18_SST': 149.6,
             '16_SST': 149.6,
             '14_SST': 118.11,
             '12_SST': 108.26,
@@ -44,17 +32,20 @@ class Capabilities:
             '8_SST':  0
         }
 
+        # Density values taken from cost calculator
         self.density = {
-            '16_GLV': 0.018444444444444444,
-            '14_GLV': 0.022784722222222224,
-            '12_GLV': 0.03146527777777777,
-            '10_GLV': 0.04014583333333333,
-            '8_GLV':  0.048826389,
-            '16_SST': 0.0175,
-            '14_SST': 0.021875,
-            '12_SST': 0.030625,
-            '10_SST': 0.039375,
-            '8_SST':  0.048125
+            '18_GLV': 0.013346144,
+            '16_GLV': 0.01646971,
+            '14_GLV': 0.020161197,
+            '12_GLV': 0.028396052,
+            '10_GLV': 0.03805071,
+            '8_GLV':  0.045149723,
+            '18_SST': 0.016825925, 
+            '16_SST': 0.013634801,
+            '14_SST': 0.021467559,
+            '12_SST': 0.029880521,
+            '10_SST': 0.038583586,
+            '8_SST':  0.046706446
         }
 
         self.max_sheet_length = 180

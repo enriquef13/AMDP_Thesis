@@ -374,22 +374,24 @@ def visualize_filled_floor(panels, cap, floor_width=cfg.x_in, floor_length=cfg.y
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
     plt.show()
 
-i = 0
-for gauge in [10, 12, 14, 16]:
+n_sols = 15
+top_solutions = []
+for gauge in [10, 12, 14, 16, 18]:
     cap = Capabilities(cfg.material, gauge)
+    solutions = fill_floor_with_panels(cap, n_sols=20)
 
-    solutions = fill_floor_with_panels(cap)
+    for panels in solutions:
+        channels = obtain_channels(panels=panels, gauge=gauge, vertical=True)
+        panel_weights, channel_weights = get_panel_and_channel_weights(panels, channels)
+        top_solutions.append((panels, channels, panel_weights + channel_weights, cap, True))
 
-    vertical = True
-    if vertical:
-        for panels in solutions:
-            visualize_filled_floor(panels, cap, add_channels=True, vertical=vertical, design_number=i+1)
-            channels = obtain_channels(panels=panels, gauge=gauge, vertical=vertical)
-            panel_weights, channel_weight = get_panel_and_channel_weights(panels, channels)
-            i += 1
-    else:
-        visualize_filled_floor(solutions[0], cap, add_channels=True, vertical=vertical, design_number=i+1)
-        channels = obtain_channels(panels=solutions[0], gauge=gauge, vertical=vertical)
-        panel_weights, channel_weights = get_panel_and_channel_weights(solutions[0], channels)
-        i += 1
-    vertical = not vertical
+    channels = obtain_channels(panels=solutions[0], gauge=gauge, vertical=False)
+    panel_weights, channel_weights = get_panel_and_channel_weights(solutions[0], channels)
+    top_solutions.append((panels, channels, panel_weights + channel_weights, cap, False))
+
+top_solutions = sorted(top_solutions, key=lambda x: x[2])[:n_sols]
+
+# Visualize the top 15 solutions
+for i, (panels, channels, total_weight, cap, vertical) in enumerate(top_solutions, start=1):
+    print(f"Solution {i}: Total Weight = {total_weight:.2f} lb")
+    visualize_filled_floor(panels, cap, add_channels=True, vertical=vertical, design_number=i)

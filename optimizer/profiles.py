@@ -10,7 +10,7 @@ class Profile:
             'Rectangular': {'h': 4, 'b': 3.25, 'f': 0},
             'Hat': {'h': 4, 'b': 3.50, 'f': 1.25},
             'Double C': {'h': 4, 'b': 3.25, 'f': 0.75},
-            'I': {'h': 4.5, 'b': 6, 'f': 0}
+            'I': {'h': 3.6875, 'b': 6, 'f': 0}
         }
         self.profile = self.profiles[profile_type]
         self.get_data()

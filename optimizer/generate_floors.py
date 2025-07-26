@@ -385,13 +385,14 @@ for gauge in [10, 12, 14, 16, 18]:
         panel_weights, channel_weights = get_panel_and_channel_weights(panels, channels)
         top_solutions.append((panels, channels, panel_weights + channel_weights, cap, True))
 
-    channels = obtain_channels(panels=solutions[0], gauge=gauge, vertical=False)
-    panel_weights, channel_weights = get_panel_and_channel_weights(solutions[0], channels)
-    top_solutions.append((panels, channels, panel_weights + channel_weights, cap, False))
+    # Uncomment this to consider horizontal channels as well
+    # channels = obtain_channels(panels=solutions[0], gauge=gauge, vertical=False)
+    # panel_weights, channel_weights = get_panel_and_channel_weights(solutions[0], channels)
+    # top_solutions.append((panels, channels, panel_weights + channel_weights, cap, False))
 
-top_solutions = sorted(top_solutions, key=lambda x: x[2])[:n_sols]
 
-# Visualize the top 15 solutions
+print(f"Found {len(top_solutions)} solutions. Showing top {n_sols} in terms of weight.")
+top_solutions = sorted(top_solutions, key=lambda x: x[2])[:n_sols]   
+
 for i, (panels, channels, total_weight, cap, vertical) in enumerate(top_solutions, start=1):
-    print(f"Solution {i}: Total Weight = {total_weight:.2f} lb")
     visualize_filled_floor(panels, cap, add_channels=True, vertical=vertical, design_number=i)

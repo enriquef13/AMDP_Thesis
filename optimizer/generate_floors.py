@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt # type: ignore
 import matplotlib.patches as patches # type: ignore
 import matplotlib.patches as mpatches # type: ignore
 from structural_panels import calculate_floor_gauge, calculate_wall_gauge
-import numpy as np
+import numpy as np # type: ignore
 import math
 
 def fill_floor_with_panels(floor_width, floor_length, cap, n_sols=5, only_vertical=False, display=False):

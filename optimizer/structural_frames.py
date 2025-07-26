@@ -29,7 +29,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
     K = 1.0                             # Effective length factor (pinned-pinned)
     load_factor = 1.5                   # Load factor (LRFD)
     resistance_factor = 0.9             # Resistance factor (LRFD)
-    max_deflection_ratio = 1/500        # Deflection limit
+    max_deflection_ratio = 1/240        # Deflection limit
 
     # Filter out invalid members (non-existent in nodes dictionary)
     members = [m for m in members if m[0] in nodes and m[1] in nodes]
@@ -176,16 +176,16 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
 
             # Title and subtitle
             main_title = title or "2D Frame Structure"
-            fig.suptitle(main_title, fontsize=18, y=0.96)
+            fig.suptitle(main_title, fontsize=18, y=0.96, fontweight='bold')
 
             if metrics:
                 channel_info = (
-                    f"Channel: {channel.gauge} ga {channel.material} {channel.profile_type}, "
-                    f"Member Mass: {metrics['total_member_mass']:.1f} lb"
+                    f"Channel: {channel.gauge} ga {channel.material} {channel.profile_type}-Profile, "
+                    f"Mass: {metrics['total_member_mass']:.1f} lb"
                 )
                 panel_info = (
                     f"Panel: {metrics['wall_gauge']} ga {metrics.get('panel_material', 'N/A')}, "
-                    f"Panel Mass: {metrics['total_panel_mass']:.1f} lb"
+                    f"Mass: {metrics['total_panel_mass']:.1f} lb"
                 )
                 member_mass = metrics['total_member_mass']
                 panel_mass = metrics['total_panel_mass']

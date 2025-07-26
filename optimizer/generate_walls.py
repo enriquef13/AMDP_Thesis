@@ -89,7 +89,7 @@ def generate_frames(x, y, channel_type, panel_material, n_frames=5, min_nodes=4,
 
         
         n_panels = int(np.ceil(x / panel_length)) if panel_length > 0 else 1
-        wall_gauge = calculate_wall_gauge(panel_width, panel_length, cfg.water_height_in, wind_zone=cfg.wind_zone, material=panel_material, display=True)
+        _, wall_gauge = calculate_wall_gauge(panel_width, panel_length, cfg.water_height_in, wind_zone=cfg.wind_zone, material=panel_material, display=True)
         if wall_gauge < 10 or wall_gauge is None:
             raise ValueError("Calculated wall gauge is too thick.")
         cap = Capabilities(cfg.material, wall_gauge)
@@ -325,7 +325,7 @@ df_sorted = df_results.sort_values(by="Total Mass").reset_index(drop=True)
 
 print(f"\n✅ {len(df_sorted)} structurally sound designs found out of {total_combos} combinations.")
 
-n = 15
+n = 5
 print(f"\n=== Top {n} Structurally Sound Designs ===")
 top_n = df_sorted.head(n)
 

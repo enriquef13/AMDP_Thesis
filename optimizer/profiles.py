@@ -1,5 +1,5 @@
 import general_data as gd
-import numpy as np
+import numpy as np # type: ignore
 
 class Profile:
     def __init__(self, material, gauge, profile_type):

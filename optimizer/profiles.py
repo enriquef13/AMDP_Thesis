@@ -1,4 +1,3 @@
-import general_data as gd
 import numpy as np # type: ignore
 
 class Profile:
@@ -20,7 +19,13 @@ class Profile:
         """
         Calculate the Area Moment of Inertia (I), cross-sectional area (A), and section modulus (C) for the profile. 
         """
-        t = next((k for k, v in gd.GAUGES[self.material].items() if v == self.gauge), None)
+        gauges = {
+            "SST-M3": {18: 0.047, 16: 0.059, 14: 0.075, 12: 0.101, 10: 0.128, 8: 0.158},
+            "GLV-M5": {18: 0.042, 16: 0.053, 14: 0.066, 12: 0.096, 10: 0.129, 8: 0.157}
+        }
+
+        t = gauges[self.material][self.gauge]
+
         b = self.profile['b']
         h = self.profile['h']
         f = self.profile['f']

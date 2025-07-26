@@ -379,17 +379,17 @@ for gauge in [10, 12, 14, 16]:
     cap = Capabilities(cfg.material, gauge)
 
     solutions = fill_floor_with_panels(cap)
+
     vertical = True
-    for _ in range(2):
-        if vertical:
-            for panels in solutions:
-                visualize_filled_floor(panels, cap, add_channels=True, vertical=vertical, design_number=i+1)
-                channels = obtain_channels(panels=panels, gauge=gauge, vertical=vertical)
-                panel_weights, channel_weight = get_panel_and_channel_weights(panels, channels)
-                i += 1
-        else:
-            visualize_filled_floor(solutions[0], cap, add_channels=True, vertical=vertical, design_number=i+1)
-            channels = obtain_channels(panels=solutions[0], gauge=gauge, vertical=vertical)
-            panel_weights, channel_weights = get_panel_and_channel_weights(solutions[0], channels)
+    if vertical:
+        for panels in solutions:
+            visualize_filled_floor(panels, cap, add_channels=True, vertical=vertical, design_number=i+1)
+            channels = obtain_channels(panels=panels, gauge=gauge, vertical=vertical)
+            panel_weights, channel_weight = get_panel_and_channel_weights(panels, channels)
             i += 1
-        vertical = not vertical
+    else:
+        visualize_filled_floor(solutions[0], cap, add_channels=True, vertical=vertical, design_number=i+1)
+        channels = obtain_channels(panels=solutions[0], gauge=gauge, vertical=vertical)
+        panel_weights, channel_weights = get_panel_and_channel_weights(solutions[0], channels)
+        i += 1
+    vertical = not vertical

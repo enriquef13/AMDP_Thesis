@@ -4,7 +4,6 @@ from skimage import measure # type: ignore
 import numpy as np # type: ignore
 import pandas as pd # type: ignore
 import xlwings as xw # type: ignore
-import general_data as gd
 import math
 
 class Capabilities:
@@ -22,10 +21,15 @@ class Capabilities:
             'perimeter_plus_fastener': 'I', 'J': 'J', 'K': 'K', 'N': 'N'
         }
 
+        gauges = {
+            "SST-M3": {18: 0.047, 16: 0.059, 14: 0.075, 12: 0.101, 10: 0.128, 8: 0.158},
+            "GLV-M5": {18: 0.042, 16: 0.053, 14: 0.066, 12: 0.096, 10: 0.129, 8: 0.157}
+        }
+
         self.gauge_material = f"{self.gauge}_{self.material}"
 
-        mat = gd.SST if self.material == 'SST' else gd.GLV
-        self.thickness = next((k for k, v in gd.GAUGES[mat].items() if v == self.gauge), None)
+        mat = "SST-M3" if self.material == 'SST' else "GLV-M5"
+        self.thickness = gauges[mat][self.gauge]
 
         self.max_flange_width = {
             '16_GLV': 149.6,

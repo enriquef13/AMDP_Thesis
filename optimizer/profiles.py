@@ -10,7 +10,8 @@ class Profile:
             'C': {'h': 3.6875, 'b': 3, 'f': 0},
             'Rectangular': {'h': 4, 'b': 3.25, 'f': 0},
             'Hat': {'h': 4, 'b': 3.50, 'f': 1.25},
-            'Double C': {'h': 4, 'b': 3.25, 'f': 0.75}
+            'Double C': {'h': 4, 'b': 3.25, 'f': 0.75},
+            'I': {'h': 4.5, 'b': 6, 'f': 0}
         }
         self.profile = self.profiles[profile_type]
         self.get_data()
@@ -49,9 +50,17 @@ class Profile:
             self.A = b * h - (b - 2 * t) * (h - 2 * t) - t * (h - 2 * f)
             self.c = h / 2
             self.unique_bends = 4
+        elif self.profile_type == 'I':
+            term2 = (b - t) * np.power(h - 2 * t, 3) / 12
+            self.I = term1 - term2
+            self.A = b * h - 2 * (h - 2 * t) * (b - t)/2
+            self.c = b / 2
+            self.unique_bends = 4
 
         if self.profile_type in ['C', 'Hat', 'Double C']:
             self.perimeter = self.width = 2 * (f + b) + h
         elif self.profile_type == 'Rectangular':
-            self.perimeter = self.width = 2 * (b + h)     
+            self.perimeter = self.width = 2 * (b + h)
+        elif self.profile_type == 'I':
+            self.perimeter = self.width = 2 * b + (h - 2 * t)
         self.corner_welds = 0

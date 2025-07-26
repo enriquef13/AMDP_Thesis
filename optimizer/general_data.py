@@ -57,3 +57,6 @@ WIND_PRESSURE_RATINGS = {
     WIND_TC: 45,   # psf
     WIND_TCM: 60   # psf
 }
+
+from profiles import Profile
+FLOOR_BEAMS = Profile(material=GLV, gauge=12, profile_type='I')

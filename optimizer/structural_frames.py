@@ -249,10 +249,6 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
             plt.show()
 
 
-
-
-
-
     # Return structural soundness
     return len(failed_members) == 0 and len(deflected_members) == 0
 

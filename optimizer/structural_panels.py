@@ -20,7 +20,6 @@ Plate bending formulas: https://jackson.engr.tamu.edu/wp-content/uploads/sites/2
 import numpy as np # type: ignore
 from general_data import MATERIALS, GAUGES, BETA_FLOOR, ALPHA_FLOOR, BETA_WALL, GAMMA_WALL, WIND_PRESSURE_RATINGS, SF
 from general_data import WIND_NTC, WIND_TC, WIND_TCM, SST, GLV
-from config import z_in
 
 def _interpolate_key(a_b, dictionary):
     d_keys = sorted(dictionary.keys())

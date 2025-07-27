@@ -134,7 +134,8 @@ def generate_frames(x, y, channel_type, panel_material, n_frames=5, min_nodes=4,
                 "total_panel_mass": total_panel_mass,
                 "total_mass": total_mass,
                 "weighted_total_mass": weighted_total_mass,
-                "panel_material": panel_material
+                "panel_material": panel_material,
+                "channel_data": channel_type
             }
         ])
 

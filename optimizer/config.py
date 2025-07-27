@@ -13,4 +13,4 @@ top_load = 40000 # 11540.0584                           # Uniform load on top ed
 # # Dimensions for GAC CWB
 x_in = 215
 y_in = 137
-z_in = 26
+z_in = 27

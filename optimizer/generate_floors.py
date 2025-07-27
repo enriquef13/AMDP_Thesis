@@ -9,24 +9,24 @@ from structural_panels import calculate_floor_gauge, calculate_wall_gauge
 import numpy as np # type: ignore
 import math
 
-def fill_floor_with_panels(cap, floor_width=cfg.x_in, floor_length=cfg.y_in, n_sols=10, only_vertical=True, display=False):
+def fill_floor_with_panels(gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, n_sols=1, only_vertical=True, display=False):
     """
     Fill a floor area with the smallest number of panels, ensuring the entire area is covered.
     Panels can be rotated to minimize the number of panels. (Max. floor length: 165) 
 
     Parameters:
+        gauge (float): Panel gauge.
         floor_width (float): Width of the floor area.
         floor_length (float): Length of the floor area.
-        cap (Capabilities): Panel capabilities including dimensions and constraints.
 
     Returns:
         list: List of panel setups, each containing panel dimensions [(width, length), ...].
     """
+    cap = Capabilities(cfg.material, gauge)
     x_min, x_max, y_min, y_max = cap.obtain_APB_limits()
     if display: print(f"APB limits: x_min={x_min}, x_max={x_max}, y_min={y_min}, y_max={y_max}")
 
-    solutions = []
-
+    panel_setups = []
     panels = []
 
     n_bottom_panels = math.ceil(floor_width / x_max)
@@ -58,7 +58,7 @@ def fill_floor_with_panels(cap, floor_width=cfg.x_in, floor_length=cfg.y_in, n_s
             panels.append((top_width, top_length, panel_weight))
 
     # Store the initial panel setup
-    solutions.append(panels)
+    panel_setups.append(panels)
 
     # Incrementally add panels to both top and bottom rows
     for _ in range(1, n_sols + 1):
@@ -82,9 +82,18 @@ def fill_floor_with_panels(cap, floor_width=cfg.x_in, floor_length=cfg.y_in, n_s
                 panels.append((top_width, top_length, panel_weight))
 
         # Store the new panel setup
-        solutions.append(panels)
+        panel_setups.append(panels)
 
-    return solutions
+    top_solutions = []
+    for panels in panel_setups:
+        channels = _obtain_channels(panels=panels, gauge=cap.gauge, vertical=True)
+        top_solutions.append({
+            'panels': panels,
+            'channels': channels,
+            'cap': cap
+        })
+
+    return top_solutions if n_sols > 1 else top_solutions[0]
 
 def plot_panel_thicknesses(max_width=cfg.x_in, max_length=cfg.y_in, step_size=1, 
                            water_height_in=cfg.water_height_in, material=cfg.material,
@@ -189,7 +198,7 @@ def _get_thickness_and_gauge_array(max_width=cfg.x_in, max_length=cfg.y_in, step
 
     return thickness_array, gauge_array
 
-def obtain_channels(panels, gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, step_size=1, vertical=True):
+def _obtain_channels(panels, gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, step_size=1, vertical=True):
     channel_width = gd.FLOOR_BEAMS.profile['b']
     channel_perimeter = gd.FLOOR_BEAMS.perimeter
     c_cap = Capabilities(material=gd.FLOOR_BEAMS.material, gauge=gauge)
@@ -244,7 +253,7 @@ def obtain_channels(panels, gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, 
 
     return channels
 
-def get_panel_and_channel_weights(panels, channels):
+def _get_panel_and_channel_weights(panels, channels):
     """
     Calculate the total weight of panels and channels.
     
@@ -258,8 +267,8 @@ def get_panel_and_channel_weights(panels, channels):
     channel_weights = sum(channel[2] for channel in channels)  # Sum channel weights
     return panel_weights, channel_weights
 
-def visualize_filled_floor(panels, cap, floor_width=cfg.x_in, floor_length=cfg.y_in, add_channels=True, 
-                           vertical=True, step_size=1, metrics=True, design_number=1):
+def visualize_filled_floor(floor, design_name="", floor_width=cfg.x_in, floor_length=cfg.y_in, add_channels=True, 
+                           vertical=True, step_size=1, metrics=True):
     """
     Visualize the filled floor area with panels based on the backtracking algorithm's placement logic.
     Optionally, add evenly spaced channels (vertical or horizontal) within individual panels.
@@ -273,7 +282,11 @@ def visualize_filled_floor(panels, cap, floor_width=cfg.x_in, floor_length=cfg.y
         add_channels (bool): If True, channels are added within panels.
         vertical (bool): If True, channels are added vertically; otherwise, horizontally.
     """
-    material = gd.SST if cap.material == 'SST' else gd.GLV
+    panels = floor['panels']
+    channels = floor['channels']
+    cap = floor['cap']
+
+    material = cfg.material
     gauge = cap.gauge
 
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -317,7 +330,7 @@ def visualize_filled_floor(panels, cap, floor_width=cfg.x_in, floor_length=cfg.y
         last_panel_length = panel_length
 
     if add_channels:
-        channels = obtain_channels(panels, gauge=gauge, vertical=vertical, step_size=step_size)
+        channels = _obtain_channels(panels, gauge=gauge, vertical=vertical, step_size=step_size)
         for channel in channels:
             if vertical:
                 x, length, _ = channel
@@ -334,11 +347,11 @@ def visualize_filled_floor(panels, cap, floor_width=cfg.x_in, floor_length=cfg.y
     ax.legend(handles=[panel_legend, channel_legend], loc='lower right', fontsize=12)
 
     # Title and subtitle
-    title = f"Design {design_number}"
+    title = f"Design {design_name}"
     fig.suptitle(title, fontsize=18, fontweight='bold', y=0.95)
 
     if metrics:
-        panel_weights, channel_weights = get_panel_and_channel_weights(panels, channels)
+        panel_weights, channel_weights = _get_panel_and_channel_weights(panels, channels)
 
         channel_gauge = gd.FLOOR_BEAMS.gauge
         channel_material = gd.FLOOR_BEAMS.material
@@ -374,24 +387,18 @@ def visualize_filled_floor(panels, cap, floor_width=cfg.x_in, floor_length=cfg.y
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
     plt.show()
 
-n_sols = 15
-top_solutions = []
+"""
+n_sols = 1
+top_floors = []
 for gauge in [10, 12, 14, 16, 18]:
-    cap = Capabilities(cfg.material, gauge)
-    solutions = fill_floor_with_panels(cap, n_sols=20)
+    floors = fill_floor_with_panels(gauge, n_sols=20)
+    top_floors.extend(floors)
 
-    for panels in solutions:
-        channels = obtain_channels(panels=panels, gauge=gauge, vertical=True)
-        panel_weights, channel_weights = get_panel_and_channel_weights(panels, channels)
-        top_solutions.append((panels, channels, panel_weights + channel_weights, cap, True))
+print(f"Found {len(top_floors)} solutions. Showing top {n_sols} in terms of weight.")
+top_floors = sorted(top_floors, 
+                    key=lambda x: sum(panel[2] for panel in x['panels']) + sum(channel[2] for channel in x['channels']))[:n_sols] 
 
-    channels = obtain_channels(panels=solutions[0], gauge=gauge, vertical=False)
-    panel_weights, channel_weights = get_panel_and_channel_weights(solutions[0], channels)
-    top_solutions.append((panels, channels, panel_weights + channel_weights, cap, False))
+for i, floor in enumerate(top_floors, start=1):
+    visualize_filled_floor(floor, add_channels=True, vertical=True, design_name=str(i))
 
-top_solutions = sorted(top_solutions, key=lambda x: x[2])[:n_sols]
-
-# Visualize the top 15 solutions
-for i, (panels, channels, total_weight, cap, vertical) in enumerate(top_solutions, start=1):
-    print(f"Solution {i}: Total Weight = {total_weight:.2f} lb")
-    visualize_filled_floor(panels, cap, add_channels=True, vertical=vertical, design_number=i)
+"""

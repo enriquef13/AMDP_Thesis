@@ -45,7 +45,7 @@ def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_
         
         # Force recalculation of formulas
         workbook.save(filepath)
-        force_recalculation(filepath)
+        _force_recalculation(filepath)
 
         # Reload the workbook to read calculated values
         workbook = load_workbook(filepath, data_only=True)
@@ -62,7 +62,7 @@ def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_
         print(f"Error updating or reading Excel: {e}")
         return None
 
-def force_recalculation(filepath):
+def _force_recalculation(filepath):
     """
     Open the Excel file with xlwings to force recalculation of formulas.
     """

@@ -36,8 +36,6 @@ def generate_frame(x, z, channel_type, panel_material, num_nodes=12, display=Fal
             nodes[start_len + i + num_top_bot_nodes] = [pos_x, z]
         num_remaining_nodes -= num_top_bot_nodes * 2
 
-    print(f"Generating frame with {len(nodes)}.")
-
     # Sort nodes and classify by edge
     sorted_nodes = dict(sorted(nodes.items(), key=lambda item: (item[1][1], item[1][0])))
     left_id_nodes = [idx for idx, n in sorted_nodes.items() if n[0] == 0]

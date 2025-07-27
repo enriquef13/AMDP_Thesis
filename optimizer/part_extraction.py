@@ -165,20 +165,8 @@ frames = [x_frame, y_frame]
 part_entries = []
 for frame in frames:
     part_entries.extend(get_wall_parts(frame, design_name))
-
-    # calculate_wall_frame_structural(
-    #             frame[0],
-    #             frame[1],
-    #             channel_type,
-    #             q=10,
-    #             display=False,
-    #             plot=True,
-    #             title=design_name,
-    #             metrics=frame[2]
-    #         )
-    
 part_entries.extend(get_floor_parts(floor, design_name))
+
+
 print("Part Entries:")
-for entry in part_entries:
-    print(entry)
-# visualize_filled_floor(floor, design_name)
+for entry in part_entries: print(entry)

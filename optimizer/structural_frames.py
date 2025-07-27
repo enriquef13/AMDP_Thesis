@@ -159,94 +159,94 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
         df_results = pd.DataFrame(internal_results)
         print(df_results.round(3))
 
-        if plot:
-            fig, ax = plt.subplots(figsize=(8, 6))
+    if plot:
+        fig, ax = plt.subplots(figsize=(8, 6))
 
-            # Plot members
-            for i, j in members:
-                x = [nodes[i][0], nodes[j][0]]
-                y = [nodes[i][1], nodes[j][1]]
-                color = 'red' if (i, j) in failed_members or (i, j) in deflected_members else 'black'
-                ax.plot(x, y, color=color, lw=2)
+        # Plot members
+        for i, j in members:
+            x = [nodes[i][0], nodes[j][0]]
+            y = [nodes[i][1], nodes[j][1]]
+            color = 'red' if (i, j) in failed_members or (i, j) in deflected_members else 'black'
+            ax.plot(x, y, color=color, lw=2)
 
-            # Plot nodes and labels
-            for idx, (x, y_val) in nodes.items():
-                ax.plot(x, y_val, 'ro')
-                ax.text(x + 0.2, y_val + 0.2, f'{idx}', fontsize=8)
+        # Plot nodes and labels
+        for idx, (x, y_val) in nodes.items():
+            ax.plot(x, y_val, 'ro')
+            ax.text(x + 0.2, y_val + 0.2, f'{idx}', fontsize=8)
 
-            # Title and subtitle
-            main_title = title or "2D Frame Structure"
-            fig.suptitle(main_title, fontsize=18, y=0.96, fontweight='bold')
+        # Title and subtitle
+        main_title = title or "2D Frame Structure"
+        fig.suptitle(main_title, fontsize=18, y=0.96, fontweight='bold')
 
-            if metrics:
-                channel_info = (
-                    f"Channel: {channel.gauge} ga {channel.material} {channel.profile_type}-Profile, "
-                    f"Mass: {metrics['total_member_mass']:.1f} lb"
-                )
-                panel_info = (
-                    f"Panel: {metrics['wall_gauge']} ga {metrics.get('panel_material', 'N/A')}, "
-                    f"Mass: {metrics['total_panel_mass']:.1f} lb"
-                )
-                member_mass = metrics['total_member_mass']
-                panel_mass = metrics['total_panel_mass']
-                total_mass = member_mass + panel_mass
-                member_ratio = int(round(100 * member_mass / total_mass))
-                panel_ratio = 100 - member_ratio
-                usage_info = (
-                    f"Total Mass: {total_mass:.1f} lb"
-                )
-                # Add colored ratio text with adjusted positions to avoid overlap
-                fig.text(0.5, 0.91, channel_info, fontsize=14, ha='center', va='top', color='red')
-                fig.text(0.5, 0.87, panel_info, fontsize=14, ha='center', va='top', color='blue')
-                # Use separate fig.text for colored ratios
-                fig.text(0.45, 0.83, f"{usage_info}   Mass Ratio: ", fontsize=14, ha='center', va='top', color='black')
-                fig.text(0.66, 0.83, f"{member_ratio}%", fontsize=14, ha='left', va='top', color='red')
-                fig.text(0.71, 0.83, " | ", fontsize=14, ha='left', va='top', color='black')
-                fig.text(0.73, 0.83, f"{panel_ratio}%", fontsize=14, ha='left', va='top', color='blue')
+        if metrics:
+            channel_info = (
+                f"Channel: {channel.gauge} ga {channel.material} {channel.profile_type}-Profile, "
+                f"Mass: {metrics['total_member_mass']:.1f} lb"
+            )
+            panel_info = (
+                f"Panel: {metrics['wall_gauge']} ga {metrics.get('panel_material', 'N/A')}, "
+                f"Mass: {metrics['total_panel_mass']:.1f} lb"
+            )
+            member_mass = metrics['total_member_mass']
+            panel_mass = metrics['total_panel_mass']
+            total_mass = member_mass + panel_mass
+            member_ratio = int(round(100 * member_mass / total_mass))
+            panel_ratio = 100 - member_ratio
+            usage_info = (
+                f"Total Mass: {total_mass:.1f} lb"
+            )
+            # Add colored ratio text with adjusted positions to avoid overlap
+            fig.text(0.5, 0.91, channel_info, fontsize=14, ha='center', va='top', color='red')
+            fig.text(0.5, 0.87, panel_info, fontsize=14, ha='center', va='top', color='blue')
+            # Use separate fig.text for colored ratios
+            fig.text(0.45, 0.83, f"{usage_info}   Mass Ratio: ", fontsize=14, ha='center', va='top', color='black')
+            fig.text(0.66, 0.83, f"{member_ratio}%", fontsize=14, ha='left', va='top', color='red')
+            fig.text(0.71, 0.83, " | ", fontsize=14, ha='left', va='top', color='black')
+            fig.text(0.73, 0.83, f"{panel_ratio}%", fontsize=14, ha='left', va='top', color='blue')
 
-            # Add panel rectangles and dotted boundaries
-            if metrics:
-                panel_length = metrics.get('panel_length', None)
-                x_min = min(n[0] for n in nodes.values())
-                x_max = max(n[0] for n in nodes.values())
-                y_min = min(n[1] for n in nodes.values())
-                y_max = max(n[1] for n in nodes.values())
+        # Add panel rectangles and dotted boundaries
+        if metrics:
+            panel_width = metrics.get('panel_width', None)
+            x_min = min(n[0] for n in nodes.values())
+            x_max = max(n[0] for n in nodes.values())
+            y_min = min(n[1] for n in nodes.values())
+            y_max = max(n[1] for n in nodes.values())
 
-                if panel_length:
-                    current_x = x_min
-                    panel_count = int(np.floor((x_max - x_min) / panel_length))
-                    
-                    for i in range(panel_count):
+            if panel_width:
+                current_x = x_min
+                panel_count = int(np.floor((x_max - x_min) / panel_width))
+                
+                for i in range(panel_count):
 
-                        rect = patches.Rectangle(
-                            (current_x, y_min), panel_length, y_max - y_min,
-                            linewidth=5, linestyle='--', edgecolor='blue', facecolor='lightblue', alpha=0.25,
-                        )
-                        ax.add_patch(rect)
+                    rect = patches.Rectangle(
+                        (current_x, y_min), panel_width, y_max - y_min,
+                        linewidth=5, linestyle='--', edgecolor='blue', facecolor='lightblue', alpha=0.25,
+                    )
+                    ax.add_patch(rect)
 
-                        current_x += panel_length
+                    current_x += panel_width
 
-            # Axes and grid adjustments
-            y_vals = [n[1] for n in nodes.values()]
-            y_min_data, y_max_data = min(y_vals), max(y_vals)
-            y_pad = 0.1 * (y_max_data - y_min_data) if y_max_data > y_min_data else 5
-            ax.set_ylim(y_min_data - y_pad, y_max_data + y_pad)
+        # Axes and grid adjustments
+        y_vals = [n[1] for n in nodes.values()]
+        y_min_data, y_max_data = min(y_vals), max(y_vals)
+        y_pad = 0.1 * (y_max_data - y_min_data) if y_max_data > y_min_data else 5
+        ax.set_ylim(y_min_data - y_pad, y_max_data + y_pad)
 
-            ax.set_xlabel("X (in)")
-            ax.set_ylabel("Y (in)")
-            ax.grid(True)
-            ax.set_ylim(y_min_data - 20, y_max_data + 20)
-            
-            # Add legend
-            legend_elements = [
-                Line2D([0], [0], color='black', lw=2, label='Channels'),
-                Line2D([0], [0], color='blue', lw=2, linestyle='--', alpha=0.5, label='Panels')
-            ]
-            ax.legend(handles=legend_elements, loc='upper right', fontsize=10)
+        ax.set_xlabel("X (in)")
+        ax.set_ylabel("Y (in)")
+        ax.grid(True)
+        ax.set_ylim(y_min_data - 20, y_max_data + 20)
+        
+        # Add legend
+        legend_elements = [
+            Line2D([0], [0], color='black', lw=2, label='Channels'),
+            Line2D([0], [0], color='blue', lw=2, linestyle='--', alpha=0.5, label='Panels')
+        ]
+        ax.legend(handles=legend_elements, loc='upper right', fontsize=10)
 
-            plt.subplots_adjust(top=0.75)  
+        plt.subplots_adjust(top=0.75)  
 
-            plt.show()
+        plt.show()
 
 
     # Return structural soundness

@@ -1,4 +1,7 @@
-def _get_wall_parts(frame, design_name, x_wall=True):
+import general_data as gd
+import config as cfg
+
+def get_wall_parts(frame, design_name):
     """
     Extract wall parts from the frames.
 
@@ -6,17 +9,25 @@ def _get_wall_parts(frame, design_name, x_wall=True):
         frame: A tuple containing nodes, members, and details of the wall frame.
         design_name: XW#_YW#_F#
     """
+    part_entries = []
+
     nodes, members, details = frame
 
+    wall_type = details['wall_type']
     n_panels = details['n_panels']
-    panel_length = details['panel_length']
+    panel_height = details['panel_height']
     panel_width = details['panel_width']
     panel_gauge = details['wall_gauge'] 
     panel_material = details['panel_material']
     panel_bends = 4
 
+    part_name = f"W_Panel_{wall_type}_{design_name}"
+    panel_entry = _get_entry(design_name, part_name, panel_height, panel_width, 
+                             n_panels * 2, gd.CUT_MSP, gd.FORM_APB, 
+                             panel_material, panel_gauge, panel_bends, "Class 2")
+    part_entries.append(panel_entry)
+
     channel_data = details['channel_data']
-    channel_type = channel_data.profile_type
     channel_gauge = channel_data.gauge
     channel_material = channel_data.material
     channel_width = channel_data.width
@@ -26,16 +37,28 @@ def _get_wall_parts(frame, design_name, x_wall=True):
     n_horizontal_channels = 2
     v_channel_length = _get_vertical_channel_length(nodes)
     n_vertical_channels = len(nodes) // 2
-    d_channel_length, n_diagonal_channels = _get_diagonal_channel_length(nodes)
+    d_channel_length, n_diagonal_channels = _get_diagonal_channel_length(nodes, members)
 
-    part_entries = []
+    v_channel_name = f"W_Channel_V{wall_type}_{design_name}"
+    v_channel_entry = _get_entry(design_name, v_channel_name, channel_width, v_channel_length,
+                                 n_vertical_channels * 2, gd.CUT_TL, gd.FORM_RF, 
+                                 channel_material, channel_gauge, channel_bends, "Class 2")
+    part_entries.append(v_channel_entry)
+    
+    h_channel_name = f"W_Channel_H{wall_type}_{design_name}"
+    h_channel_entry = _get_entry(design_name, h_channel_name, channel_width, h_channel_length,
+                                 n_horizontal_channels * 2, gd.CUT_TL, gd.FORM_RF,
+                                 channel_material, channel_gauge, 0, "Class 2")
+    part_entries.append(h_channel_entry)
 
-    panel_type = 'X' if x_wall else 'Y'
-    panel_entry = [f"W_Panel_{panel_type}_{design_name}"]
+    if n_diagonal_channels:
+        d_channel_name = f"W_Channel_D{wall_type}_{design_name}"
+        d_channel_entry = _get_entry(design_name, d_channel_name, channel_width, d_channel_length,
+                                     n_diagonal_channels * 2, gd.CUT_TL, gd.FORM_RF,
+                                     channel_material, channel_gauge, 0, "Class 2")
+        part_entries.append(d_channel_entry)
 
-            
-
-
+    return part_entries
 
 def _get_horizontal_channel_length(nodes):
     """
@@ -76,43 +99,86 @@ def _get_diagonal_channel_length(nodes, members):
         return d_channel_length, n_diagonal_channels
     except Exception as e:
         return 0, 0
+    
+def _get_entry(design_name, part_name, width, length, qty, cut_method, form_method, material, gauge, bends, class_type):
+    cut_distance = 2 * (width + length)
+    entry = [design_name, part_name, qty, cut_method, form_method, material, gauge, 0,
+             cut_distance, bends, 4, length, width, class_type]
+    return entry
 
-def _get_floor_parts():
+def get_floor_parts(floor, design_name):
     """
     Extract floor parts from the panels and channels.
     """
-    return
+    part_entries = []
+    panels = floor['panels']
+    channels = floor['channels']
+    cap = floor['cap']
 
-def get_design_parts():
-    """
-    Extract all design parts including wall and floor parts.
-    """
-    wall_parts = _get_wall_parts()
-    floor_parts = _get_floor_parts()
+    all_same = all(panels[0] == panel for panel in panels)
+    n_panels = len(panels) if all_same else len(panels) // 2
+    b_panel_width = panels[0][0]
+    b_panel_length = panels[0][1]
+    panel_gauge = cap.gauge 
+    panel_material = cfg.material
+    panel_bends = 4
 
-    design_parts = {
-        'wall_parts': wall_parts,
-        'floor_parts': floor_parts
-    }
+    panel_entry = _get_entry(design_name, f"F_Panel_1_{design_name}", b_panel_width, b_panel_length,
+                             n_panels, gd.CUT_MSP, gd.FORM_APB,
+                             panel_material, panel_gauge, panel_bends, "Class 2")
+    part_entries.append(panel_entry)
+    
+    if not all_same:
+        t_panel_width = panels[-1][0]
+        t_panel_length = panels[-1][1]
+        panel_entry = _get_entry(design_name, f"F_Panel_2_{design_name}", t_panel_width, t_panel_length,
+                                 n_panels, gd.CUT_MSP, gd.FORM_APB,
+                                 panel_material, panel_gauge, panel_bends, "Class 2")
+        part_entries.append(panel_entry)
 
-    return design_parts
+    n_channels = len(channels)
+    channel_length = channels[0][1]
+    channel_gauge = gd.FLOOR_BEAMS.gauge
+    channel_material = gd.FLOOR_BEAMS.material
+    channel_width = gd.FLOOR_BEAMS.width
+    channel_bends = gd.FLOOR_BEAMS.unique_bends
 
-from generate_walls import generate_frames
+    channel_entry = _get_entry(design_name, f"F_Channel_{design_name}", channel_width, channel_length,
+                                n_channels, gd.CUT_TL, gd.FORM_RF,
+                                channel_material, channel_gauge, channel_bends, "Class 2")
+    part_entries.append(channel_entry)
+
+    return part_entries
+
+from generate_walls import generate_frame
 from structural_frames import calculate_wall_frame_structural
-import config as cfg
+from generate_floors import fill_floor_with_panels, visualize_filled_floor
 from profiles import Profile
 
+design_name = "XW1_YW1_F1"
 channel_type = Profile(cfg.material, 10, "C")
-frame = generate_frames(cfg.x_in, cfg.z_in, channel_type, cfg.material, n_frames=1, min_nodes=12, max_nodes=12, diagonal_plan="A")   
-d_channel_length, n_diagonal_channels = _get_diagonal_channel_length(frame[0][0], frame[0][1])
+x_frame = generate_frame(cfg.x_in, cfg.z_in, channel_type, cfg.material, num_nodes=12, diagonal_plan="A")
+y_frame = generate_frame(cfg.y_in, cfg.z_in, channel_type, cfg.material, num_nodes=12, diagonal_plan="A")
+floor = fill_floor_with_panels(10, n_sols=1, only_vertical=True, display=False)
+frames = [x_frame, y_frame]
 
-calculate_wall_frame_structural(
-            frame[0][0],
-            frame[0][1],
-            channel_type,
-            q=1000,
-            display=True,
-            plot=True,
-            title=f"Design TEST",
-            metrics=frame[0][2]
-        )
+part_entries = []
+for frame in frames:
+    part_entries.extend(get_wall_parts(frame, design_name))
+
+    # calculate_wall_frame_structural(
+    #             frame[0],
+    #             frame[1],
+    #             channel_type,
+    #             q=10,
+    #             display=False,
+    #             plot=True,
+    #             title=design_name,
+    #             metrics=frame[2]
+    #         )
+    
+part_entries.extend(get_floor_parts(floor, design_name))
+print("Part Entries:")
+for entry in part_entries:
+    print(entry)
+# visualize_filled_floor(floor, design_name)

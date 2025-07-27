@@ -9,7 +9,7 @@ from structural_panels import calculate_floor_gauge, calculate_wall_gauge
 import numpy as np # type: ignore
 import math
 
-def fill_floor_with_panels(gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, n_sols=1, only_vertical=True, display=False):
+def fill_floor_with_panels(gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, n_sols=1, display=False):
     """
     Fill a floor area with the smallest number of panels, ensuring the entire area is covered.
     Panels can be rotated to minimize the number of panels. (Max. floor length: 165) 
@@ -18,6 +18,8 @@ def fill_floor_with_panels(gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, n
         gauge (float): Panel gauge.
         floor_width (float): Width of the floor area.
         floor_length (float): Length of the floor area.
+        n_sols (int): Number of solutions to generate.
+        display (bool): If True, displays the filled floor area.
 
     Returns:
         list: List of panel setups, each containing panel dimensions [(width, length), ...].
@@ -42,16 +44,9 @@ def fill_floor_with_panels(gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, n
 
     if top_space > 0:
         top_space = floor_length - bottom_length
-        top_orientation = 'horizontal' if top_space >= x_min and top_space <= x_max else 'vertical'
-        if only_vertical: top_orientation = 'vertical'
-        if top_orientation == 'horizontal':
-            n_top_panels = math.ceil(floor_width / y_max)
-            top_length = top_space if top_space >= x_min and top_space <= x_max else x_max
-            top_width = floor_width / n_top_panels
-        else:
-            n_top_panels = math.ceil(floor_width / x_max)
-            top_length = top_space if top_space >= y_min and top_space <= y_max else y_max
-            top_width = floor_width / n_top_panels
+        n_top_panels = math.ceil(floor_width / x_max)
+        top_length = top_space if top_space >= y_min and top_space <= y_max else y_max
+        top_width = floor_width / n_top_panels
         panel_weight = top_width * top_length * cap.density[cap.gauge_material]
 
         for _ in range(n_top_panels):
@@ -400,5 +395,4 @@ top_floors = sorted(top_floors,
 
 for i, floor in enumerate(top_floors, start=1):
     visualize_filled_floor(floor, add_channels=True, vertical=True, design_name=str(i))
-
 """

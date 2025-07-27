@@ -10,7 +10,7 @@ class Profile:
             'Rectangular': {'h': 4, 'b': 3.25, 'f': 0},
             'Hat': {'h': 4, 'b': 3.50, 'f': 1.25},
             'Double C': {'h': 4, 'b': 3.25, 'f': 0.75},
-            'I': {'h': 3.6875, 'b': 6, 'f': 0}
+            'I': {'h': 3.6875, 'b': 6, 'f': 0},
         }
         self.profile = self.profiles[profile_type]
         self.get_data()
@@ -61,6 +61,7 @@ class Profile:
             self.A = b * h - 2 * (h - 2 * t) * (b - t)/2
             self.c = b / 2
             self.unique_bends = 4
+
 
         if self.profile_type in ['C', 'Hat', 'Double C']:
             self.perimeter = self.width = 2 * (f + b) + h

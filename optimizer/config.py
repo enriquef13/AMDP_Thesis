@@ -2,7 +2,7 @@ import general_data as gd
 
 # Example of HXV3 basin (22 ft x 14 ft x 26 in)
 submodule_type = 'Water Collection Welded'      # Type of submodule
-material = gd.GLV                               # Material type (gd.SST or gd.GLV)
+material = gd.SST                               # Material type (gd.SST or gd.GLV)
 # x_in = 315                                      # Longer dimension in inches
 # y_in = 160                                      # Shorter dimension in inches
 # z_in = 30                                       # Basin height in inches

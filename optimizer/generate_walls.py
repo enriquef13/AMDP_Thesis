@@ -89,7 +89,7 @@ def generate_frames(x, y, channel_type, panel_material, n_frames=5, min_nodes=4,
 
         
         n_panels = int(np.ceil(x / panel_length)) if panel_length > 0 else 1
-        _, wall_gauge = calculate_wall_gauge(panel_width, panel_length, cfg.water_height_in, wind_zone=cfg.wind_zone, material=panel_material, display=True)
+        _, wall_gauge = calculate_wall_gauge(panel_width, panel_length, cfg.water_height_in, wind_zone=cfg.wind_zone, material=panel_material, display=False)
         if wall_gauge < 10 or wall_gauge is None:
             raise ValueError("Calculated wall gauge is too thick.")
         cap = Capabilities(cfg.material, wall_gauge)
@@ -248,7 +248,7 @@ def _add_diagonals(nodes, bottom_ids, top_ids, existing_members, plan="A"):
 
 channel_materials = [gd.GLV, gd.SST]
 panel_materials = [cfg.material]
-node_options = [4, 6, 8, 10, 12, 14, 16]
+node_options = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]
 gauge_options = [8, 10, 12, 14, 16, 18]
 profile_options = ['C', 'Rectangular', 'Hat', 'Double C', 'I']
 diagonal_plans = ['A', 'B', 'C', 'D']
@@ -280,7 +280,7 @@ for ch_mat, pnl_mat, n_nodes, gauge, profile_type, diag_plan in itertools.produc
             display=False,
             diagonal_plan=diag_plan
         )
-        
+   
         frame = frames[0]
         nodes, members = frame[0], frame[1]
         q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
@@ -325,7 +325,7 @@ df_sorted = df_results.sort_values(by="Total Mass").reset_index(drop=True)
 
 print(f"\n✅ {len(df_sorted)} structurally sound designs found out of {total_combos} combinations.")
 
-n = 5
+n = 20
 print(f"\n=== Top {n} Structurally Sound Designs ===")
 top_n = df_sorted.head(n)
 

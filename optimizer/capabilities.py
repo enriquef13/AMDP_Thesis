@@ -52,11 +52,11 @@ class Capabilities:
         self.max_sheet_width = 60
 
         self.APB_max_flange_length = 8
-        self.APB_min_flange_length = self.thickness* 5
+        self.APB_min_flange_length = self.thickness * 5
         self.APB_min_throat_length = 15.75
         self.APB_max_flat_diagonal = 157.48
         self.APB_max_mass = 286.6
-        self.APB_min_width = self.APB_min_length = self.APB_min_throat_length + 2 * (self.APB_max_flange_length * 5/8)
+        self.APB_min_width = self.APB_min_length = self.APB_min_throat_length + 2 * (self.APB_max_flange_length * 4/8)
         self.APB_max_width = self.APB_max_length = self.max_flange_width[self.gauge_material]
 
         self.MPB_max_dim = 168
@@ -85,8 +85,8 @@ class Capabilities:
             x_max = min(x_max, max_mass / y_min)
             y_max = min(y_max, max_mass / x_min)
 
-        if self.gauge == 16 or self.gauge_material == "14_GLV" or self.gauge_material == "12_GLV":
-            return x_min, x_max, y_min, y_max - 5  # Ensure minimum dimensions
+        if (self.gauge == 16 or self.gauge_material == "14_GLV" or self.gauge_material == "12_GLV") and y_max == self.APB_max_length:
+            return x_min, x_max, y_min, y_max - 4.5  # Ensure minimum dimensions
 
         # Ensure minimum dimensions
         return x_min, x_max, y_min, y_max

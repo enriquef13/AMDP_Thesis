@@ -218,7 +218,7 @@ def _add_diagonals(nodes, bottom_ids, top_ids, existing_members, plan="A"):
         raise ValueError(f"Unknown diagonal plan '{plan}'")
 
 
-def generate_top_n_frames(n_top, xwall = True,plot=False):
+def generate_top_n_frames(n_top, xwall=True, plot=False):
     """
     Generate a set of structural frames based on various configurations.
     This function iterates through different combinations of channel materials,
@@ -303,7 +303,6 @@ def generate_top_n_frames(n_top, xwall = True,plot=False):
     print(f"\n✅ {len(df_sorted)} structurally sound designs found out of {total_combos} combinations.")
 
     n = n_top
-    print(f"\n=== Top {n} Structurally Sound Designs ===")
     top_n = df_sorted.head(n)
 
     top_frames = []
@@ -311,8 +310,6 @@ def generate_top_n_frames(n_top, xwall = True,plot=False):
     wall_type = 'X Wall' if xwall else 'Y Wall'
 
     for i, row in top_n.iterrows():
-        print(f"\n🔹 Design {i+1}")
-        
         frame_data = row['Frame Data']
         top_frames.append(frame_data)
         channel_type = row['Channel Type']
@@ -320,18 +317,19 @@ def generate_top_n_frames(n_top, xwall = True,plot=False):
         metrics = frame_data[2]
         q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
 
-        try:
-            calculate_wall_frame_structural(
-                nodes,
-                members,
-                channel_type,
-                q=q,
-                display=False,
-                plot=plot,
-                title=f"{wall_type} Design {i+1}",
-                metrics=metrics
-            )
-        except Exception as e:
-            print(f"  ❌ Error plotting design: {e}")
+        if plot:
+            try:
+                calculate_wall_frame_structural(
+                    nodes,
+                    members,
+                    channel_type,
+                    q=q,
+                    display=False,
+                    plot=plot,
+                    title=f"{wall_type} Design {i+1}",
+                    metrics=metrics
+                )
+            except Exception as e:
+                print(f"  ❌ Error plotting design: {e}")
 
     return top_frames

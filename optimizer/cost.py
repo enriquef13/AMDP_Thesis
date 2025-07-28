@@ -2,6 +2,9 @@ from openpyxl import load_workbook # type: ignore
 import xlwings as xw # type: ignore
 import general_data as gd
 
+def quit_excel():
+    for app in xw.apps: app.quit()
+
 def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_type='Water Collection Welded', part_start_row=4, joint_start_row=4, summary_row=2):
     """
     Update specific cells in an existing Excel file and read calculated values.
@@ -17,6 +20,9 @@ def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_
     Returns:
         List of calculated values from the Excel file
     """
+    app = xw.App(visible=False)
+    app.quit()
+    
     part_sheet_name = 'BAC Part List'
     joint_sheet_name = 'Joints List'
     summary_sheet_name = 'Summary'
@@ -40,9 +46,14 @@ def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_
 
         # Write submodule type to the summary sheet
         summary_sheet = workbook[summary_sheet_name]
-        summary_sheet.cell(row=summary_row, column=1, value=part_entries[0][0])
-        summary_sheet.cell(row=summary_row, column=2, value=submodule_type)
-        
+
+        distinct_sets = sorted(list({entry[0] for entry in part_entries}))
+        set_num = 0
+        for i in range(summary_row, len(distinct_sets) + summary_row):
+            summary_sheet.cell(row=i, column=1, value=distinct_sets[set_num])
+            summary_sheet.cell(row=i, column=2, value=submodule_type)
+            set_num += 1
+
         # Force recalculation of formulas
         workbook.save(filepath)
         _force_recalculation(filepath)
@@ -53,8 +64,9 @@ def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_
         
         # Read calculated values ()
         calculated_values = []
-        row_values = [summary_sheet.cell(row=summary_row, column=col).value for col in range(4, 13)]  # Adjust columns as needed
-        calculated_values.append(row_values)
+        for i in range(summary_row, len(distinct_sets) + summary_row):
+            row_values = [summary_sheet.cell(row=i, column=col).value for col in range(1, 13)]  # Adjust columns as needed
+            calculated_values.append(row_values)
         
         return calculated_values
     

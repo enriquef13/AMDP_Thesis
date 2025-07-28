@@ -90,7 +90,6 @@ def extract_floor_joints(floor, part_entries):
 
     channel_length = channels[0][1]
     n_channels = part_entries[-1][2]
-    print(n_channels)
     channel_name = part_entries[-1][1]
     channel_type = gd.FLOOR_BEAMS.profile_type
  

@@ -262,7 +262,7 @@ def _get_panel_and_channel_weights(panels, channels):
     channel_weights = sum(channel[2] for channel in channels)  # Sum channel weights
     return panel_weights, channel_weights
 
-def visualize_filled_floor(floor, design_name="", floor_width=cfg.x_in, floor_length=cfg.y_in, add_channels=True, 
+def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, floor_length=cfg.y_in, add_channels=True, 
                            vertical=True, step_size=1, metrics=True):
     """
     Visualize the filled floor area with panels based on the backtracking algorithm's placement logic.
@@ -342,7 +342,7 @@ def visualize_filled_floor(floor, design_name="", floor_width=cfg.x_in, floor_le
     ax.legend(handles=[panel_legend, channel_legend], loc='lower right', fontsize=12)
 
     # Title and subtitle
-    title = f"Design {design_name}"
+    title = design_name
     fig.suptitle(title, fontsize=18, fontweight='bold', y=0.95)
 
     if metrics:
@@ -388,11 +388,12 @@ def generate_top_n_floors(n_top, plot=False):
         floors = fill_floor_with_panels(gauge, n_sols=20)
         top_floors.extend(floors)
 
-    print(f"Found {len(top_floors)} solutions. Showing top {n_top} in terms of weight.")
     top_floors = sorted(top_floors, 
                         key=lambda x: sum(panel[2] for panel in x['panels']) + sum(channel[2] for channel in x['channels']))[:n_top] 
 
     if plot:
+        n_top = len(top_floors) if n_top > len(top_floors) else n_top
+        print(f"Extracting top {n_top} floors in terms of weight.")
         for i, floor in enumerate(top_floors, start=1):
             visualize_filled_floor(floor, add_channels=True, vertical=True, design_name=f"Floor Design {i}")
     

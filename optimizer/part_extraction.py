@@ -24,7 +24,7 @@ def get_wall_parts(frame, design_name):
     part_name = f"W_Panel_{wall_type}_{design_name}"
     panel_entry = _get_entry(design_name, part_name, panel_height, panel_width, 
                              n_panels * 2, gd.CUT_MSP, gd.FORM_APB, 
-                             panel_material, panel_gauge, panel_bends, "Class 2")
+                             panel_material, panel_gauge, panel_bends, "Class 3")
     part_entries.append(panel_entry)
 
     channel_data = details['channel_data']
@@ -44,20 +44,20 @@ def get_wall_parts(frame, design_name):
     v_channel_name = f"W_Channel_V{wall_type}_{design_name}"
     v_channel_entry = _get_entry(design_name, v_channel_name, channel_width, v_channel_length,
                                  n_vertical_channels * 2, gd.CUT_TL, gd.FORM_RF, 
-                                 channel_material, channel_gauge, channel_bends, "Class 2")
+                                 channel_material, channel_gauge, channel_bends, "Class 3")
     part_entries.append(v_channel_entry)
     
     h_channel_name = f"W_Channel_H{wall_type}_{design_name}"
     h_channel_entry = _get_entry(design_name, h_channel_name, channel_width, h_channel_length,
                                  n_horizontal_channels * 2, gd.CUT_TL, gd.FORM_RF,
-                                 channel_material, channel_gauge, 0, "Class 2")
+                                 channel_material, channel_gauge, 0, "Class 3")
     part_entries.append(h_channel_entry)
 
     if n_diagonal_channels:
         d_channel_name = f"W_Channel_D{wall_type}_{design_name}"
         d_channel_entry = _get_entry(design_name, d_channel_name, channel_width, d_channel_length,
                                      n_diagonal_channels * 2, gd.CUT_TL, gd.FORM_RF,
-                                     channel_material, channel_gauge, 0, "Class 2")
+                                     channel_material, channel_gauge, 0, "Class 3")
         part_entries.append(d_channel_entry)
 
     return part_entries
@@ -127,7 +127,7 @@ def get_floor_parts(floor, design_name):
 
     panel_entry = _get_entry(design_name, f"F_Panel_B_{design_name}", b_panel_width, b_panel_length,
                              n_panels, gd.CUT_MSP, gd.FORM_APB,
-                             panel_material, panel_gauge, panel_bends, "Class 2")
+                             panel_material, panel_gauge, panel_bends, "Class 3")
     part_entries.append(panel_entry)
     
     if not all_same:
@@ -135,7 +135,7 @@ def get_floor_parts(floor, design_name):
         t_panel_length = panels[-1][1]
         panel_entry = _get_entry(design_name, f"F_Panel_T_{design_name}", t_panel_width, t_panel_length,
                                  n_panels, gd.CUT_MSP, gd.FORM_APB,
-                                 panel_material, panel_gauge, panel_bends, "Class 2")
+                                 panel_material, panel_gauge, panel_bends, "Class 3")
         part_entries.append(panel_entry)
 
     n_channels = len(channels) * 2 if gd.I_IS_DOUBLE_C else len(channels)
@@ -147,7 +147,7 @@ def get_floor_parts(floor, design_name):
 
     channel_entry = _get_entry(design_name, f"F_Channel_{design_name}", channel_width, channel_length,
                                 n_channels, gd.CUT_TL, gd.FORM_RF,
-                                channel_material, channel_gauge, channel_bends, "Class 2")
+                                channel_material, channel_gauge, channel_bends, "Class 3")
     part_entries.append(channel_entry)
 
     return part_entries

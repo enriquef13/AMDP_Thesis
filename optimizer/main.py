@@ -10,51 +10,61 @@ from generate_walls import generate_top_n_frames
 from generate_floors import generate_top_n_floors
 from part_extraction import get_floor_parts, get_wall_parts
 from joint_detection import extract_floor_wall_joints, extract_wall_joints, extract_floor_joints
-from cost import update_and_read_excel
+from cost import update_and_read_excel, quit_excel
 import config as cfg
+import numpy as np
+import pandas as pd # type: ignore
+import xlwings as xw # type: ignore
 
-plot = False
-xframes = generate_top_n_frames(1, xwall=True, plot=plot)
-yframes = generate_top_n_frames(1, xwall=False, plot=plot)
-floors = generate_top_n_floors(1, plot=plot)
 
-final_designs = []
+quit_excel()
+
+plot = True
+n_top = 15
+n_designs = 15
+xframes = generate_top_n_frames(n_designs, xwall=True, plot=plot)
+yframes = generate_top_n_frames(n_designs, xwall=False, plot=plot)
+floors = generate_top_n_floors(n_designs, plot=plot)
+
+xwall_part_entries = {}
+xwall_joint_entries = {}
 for i, xwall in enumerate(xframes):
-    for j, ywall in enumerate(yframes):
-        for k, floor in enumerate(floors):
-            design = {
-                'xwall': xwall,
-                'id_xwall': i + 1,
-                'ywall': ywall,
-                'id_ywall': j + 1,
-                'floor': floor,
-                'id_floor': k + 1
-            }
-            final_designs.append(design)
+    xwall_parts = get_wall_parts(xwall, f'XW{i+1}')
+    xwall_joints = extract_wall_joints(xwall, xwall_parts)
+    xwall_part_entries[f'XW{i+1}'] = xwall_parts
+    xwall_joint_entries[f'XW{i+1}'] = xwall_joints
 
-for i, design in enumerate(final_designs):
-    xwall = design['xwall']
-    id_xwall = design['id_xwall']
-    ywall = design['ywall']
-    id_ywall = design['id_ywall']
-    floor = design['floor']
-    id_floor = design['id_floor']
+ywall_part_entries = {}
+ywall_joint_entries = {}
+for i, ywall in enumerate(yframes):
+    ywall_parts = get_wall_parts(ywall, f'YW{i+1}')
+    ywall_joints = extract_wall_joints(ywall, ywall_parts)
+    ywall_part_entries[f'YW{i+1}'] = ywall_parts
+    ywall_joint_entries[f'YW{i+1}'] = ywall_joints
 
-    design_name = f"XW{id_xwall}_YW{id_ywall}_F{id_floor}"
+floor_part_entries = {}
+floor_joint_entries = {}
+for i, floor in enumerate(floors):
+    floor_parts = get_floor_parts(floor, f'F{i+1}')
+    floor_joints = extract_floor_joints(floor, floor_parts)
+    floor_part_entries[f'F{i+1}'] = floor_parts
+    floor_joint_entries[f'F{i+1}'] = floor_joints
 
-    xwall_parts = get_wall_parts(xwall, design_name)
-    ywall_parts = get_wall_parts(ywall, design_name)
-    floor_parts = get_floor_parts(floor, design_name)
+final_part_entries = {**xwall_part_entries, **ywall_part_entries, **floor_part_entries}
+final_joint_entries = {**xwall_joint_entries, **ywall_joint_entries, **floor_joint_entries}
 
-    joints_x = extract_wall_joints(xwall, xwall_parts)
-    joints_y = extract_wall_joints(ywall, ywall_parts)
-    joints_f = extract_floor_joints(floor, floor_parts)
+final_part_entry_list = []
+for value in final_part_entries.values():
+    for part in value:
+        final_part_entry_list.append(part)
 
-    joints_fw = extract_floor_wall_joints(floor_parts, xwall_parts, ywall_parts)
+final_joint_entry_list = []
+for value in final_joint_entries.values():
+    for joint in value:
+        final_joint_entry_list.append(joint)
 
-    design_part_entries = xwall_parts + ywall_parts + floor_parts
-    design_joint_entries = joints_x + joints_y + joints_f + joints_fw
 
-    filepath = 'cost_calculator.xlsx'
-    values = update_and_read_excel(filepath, design_part_entries, design_joint_entries, submodule_type=cfg.submodule_type)
-    print(f"Final Cost: ${values[0][-1]}")
+filepath = 'cost_calculator.xlsx'
+values = update_and_read_excel(filepath, final_part_entry_list, final_joint_entry_list, submodule_type=cfg.submodule_type)
+for i, value in enumerate(values):
+    print(f"Design {i+1}: {value[0]}, Cost: ${value[-1]}")

@@ -37,9 +37,9 @@ def get_wall_parts(frame, design_name):
     h_channel_length = _get_horizontal_channel_length(nodes)
     n_horizontal_channels = 2 if not special_case else 4
     v_channel_length = _get_vertical_channel_length(nodes)
-    n_vertical_channels = len(nodes) // 2 if not special_case else len(nodes)
+    n_vertical_channels = len(nodes) if special_case else len(nodes) // 2
     d_channel_length, n_diagonal_channels = _get_diagonal_channel_length(nodes, members)
-    n_diagonal_channels = n_diagonal_channels if not special_case else n_diagonal_channels * 2
+    n_diagonal_channels = n_diagonal_channels * 2 if special_case else n_diagonal_channels
 
     v_channel_name = f"W_Channel_V{wall_type}_{design_name}"
     v_channel_entry = _get_entry(design_name, v_channel_name, channel_width, v_channel_length,
@@ -125,7 +125,7 @@ def get_floor_parts(floor, design_name):
     panel_material = cfg.material
     panel_bends = 4
 
-    panel_entry = _get_entry(design_name, f"F_Panel_1_{design_name}", b_panel_width, b_panel_length,
+    panel_entry = _get_entry(design_name, f"F_Panel_B_{design_name}", b_panel_width, b_panel_length,
                              n_panels, gd.CUT_MSP, gd.FORM_APB,
                              panel_material, panel_gauge, panel_bends, "Class 2")
     part_entries.append(panel_entry)
@@ -133,7 +133,7 @@ def get_floor_parts(floor, design_name):
     if not all_same:
         t_panel_width = panels[-1][0]
         t_panel_length = panels[-1][1]
-        panel_entry = _get_entry(design_name, f"F_Panel_2_{design_name}", t_panel_width, t_panel_length,
+        panel_entry = _get_entry(design_name, f"F_Panel_T_{design_name}", t_panel_width, t_panel_length,
                                  n_panels, gd.CUT_MSP, gd.FORM_APB,
                                  panel_material, panel_gauge, panel_bends, "Class 2")
         part_entries.append(panel_entry)
@@ -158,7 +158,7 @@ from generate_floors import fill_floor_with_panels, visualize_filled_floor
 from profiles import Profile
 
 design_name = "XW1_YW1_F1"
-channel_type = Profile(cfg.material, 10, "C")
+channel_type = Profile(cfg.material, 10, "I")
 x_frame = generate_frame(cfg.x_in, cfg.z_in, channel_type, cfg.material, num_nodes=12, diagonal_plan="C")
 y_frame = generate_frame(cfg.y_in, cfg.z_in, channel_type, cfg.material, num_nodes=12, diagonal_plan="A")
 floor = fill_floor_with_panels(10, n_sols=1, display=False)

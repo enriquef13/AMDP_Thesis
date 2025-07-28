@@ -1,7 +1,8 @@
 
 import general_data as gd
+import config as cfg
 
-def _extract_wall_joints(frame, part_entries):
+def extract_wall_joints(frame, part_entries):
 
     nodes, members, details = frame
     joint_entries = []
@@ -82,7 +83,7 @@ def _extract_wall_joints(frame, part_entries):
             joint_entries.append([f"{h_channel_name}:{i + 1}", f"{h_channel_name}:{i + 2}", nodes[max(nodes, key=lambda x: nodes[x][0])][0]])
     return joint_entries
 
-def _extract_floor_joints(floor, part_entries):
+def extract_floor_joints(floor, part_entries):
 
     joint_entries = []
     channels, panels, cap = floor['channels'], floor['panels'], floor['cap']
@@ -133,25 +134,21 @@ def _extract_floor_joints(floor, part_entries):
 
     return joint_entries
 
-def _extract_floor_wall_joints(frames, panels, channels):
-    return
+def extract_floor_wall_joints(floor_entries, xwall_entries, ywall_entries):
 
-def extract_joints():
-    wall_joints = _extract_wall_joints()
-    floor_joints = _extract_floor_joints()
-    floor_wall_joints = _extract_floor_wall_joints()
+    floor_panel = floor_entries[0][1]
+    xwall_panel = xwall_entries[0][1]
+    ywall_panel = ywall_entries[0][1]
+
+    joint_entries = []
+    for i in range(2):
+        joint_entries.append([f"{floor_panel}:{i + 1}", f"{xwall_panel}:{i + 1}", cfg.x_in])
+        joint_entries.append([f"{floor_panel}:{i + 1}", f"{ywall_panel}:{i + 1}", cfg.y_in])
+
+    for i in range(4):
+        joint_entries.append([f"{xwall_panel}:{i + 1}", f"{ywall_panel}:{i + 1}", cfg.z_in])
+
+    return joint_entries
 
 
-    return 
 
-import part_extraction as p 
-
-# print(p.floor_entries)
-joint1 = _extract_wall_joints(p.x_frame, p.x_entries)
-# joint2 = _extract_wall_joints(p.y_frame, p.y_entries)
-# joint = _extract_floor_joints(p.floor, p.floor_entries)
-for j in joint1:
-    print(j)
-
-# for j in joint2:
-#     print(j)

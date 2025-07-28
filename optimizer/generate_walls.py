@@ -220,7 +220,7 @@ def _add_diagonals(nodes, bottom_ids, top_ids, existing_members, plan="A"):
     else:
         raise ValueError(f"Unknown diagonal plan '{plan}'")
 
-"""
+
 
 channel_materials = [gd.GLV, gd.SST]
 panel_materials = [cfg.material]
@@ -254,8 +254,7 @@ for ch_mat, pnl_mat, n_nodes, gauge, profile_type, diag_plan in itertools.produc
             display=False,
             diagonal_plan=diag_plan
         )
-        
-        frame = frames[0]
+    
         nodes, members = frame[0], frame[1]
         q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
 
@@ -325,5 +324,3 @@ for i, row in top_n.iterrows():
         )
     except Exception as e:
         print(f"  ❌ Error plotting design: {e}")
-
-"""

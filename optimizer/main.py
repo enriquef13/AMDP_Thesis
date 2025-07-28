@@ -55,6 +55,6 @@ for i, design in enumerate(final_designs):
     design_part_entries = xwall_parts + ywall_parts + floor_parts
     design_joint_entries = joints_x + joints_y + joints_f + joints_fw
 
-    filepath = "cost_calculator.xlsx"
+    filepath = 'cost_calculator.xlsx'
     values = update_and_read_excel(filepath, design_part_entries, design_joint_entries, submodule_type=cfg.submodule_type)
-    print(values)
+    print(f"Final Cost: ${values[0][-1]}")

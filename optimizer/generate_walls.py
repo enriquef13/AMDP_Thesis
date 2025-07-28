@@ -251,18 +251,18 @@ def generate_top_n_frames(n_top, xwall = True,plot=False):
 
             dim = cfg.x_in if xwall else cfg.y_in
 
-        frame = generate_frame(
-            cfg.x_in, cfg.z_in,
-            channel_type=channel_type,
-            panel_material=pnl_mat,
-            num_nodes=n_nodes,
-            display=False,
-            diagonal_plan=diag_plan
-        )
-        
-        frame = frames[0]
-        nodes, members = frame[0], frame[1]
-        q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
+            frame = generate_frame(
+                dim,
+                cfg.z_in,
+                channel_type=channel_type,
+                panel_material=pnl_mat,
+                num_nodes=n_nodes,
+                display=False,
+                diagonal_plan=diag_plan
+            )
+
+            nodes, members = frame[0], frame[1]
+            q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
 
             is_structural = calculate_wall_frame_structural(
                 nodes,
@@ -334,4 +334,4 @@ def generate_top_n_frames(n_top, xwall = True,plot=False):
         except Exception as e:
             print(f"  ❌ Error plotting design: {e}")
 
-"""
+    return top_frames

@@ -1,66 +1,60 @@
-import general_data as gd
-import config as cfg
+
+# Generate top 15 designs for each case (xwall, ywall, floor)
+# Mix and match
+# Extract parts from each design
+# Extract joints from each design
+# Input into cost calculator
+# Evaluate and rank
+
+from generate_walls import generate_top_n_frames
+from generate_floors import generate_top_n_floors
+from part_extraction import get_floor_parts, get_wall_parts
+from joint_detection import extract_floor_wall_joints, extract_wall_joints, extract_floor_joints
 from cost import update_and_read_excel
-from structural_panels import calculate_floor_gauge, calculate_wall_gauge 
-from profiles import Profile
+import config as cfg
 
-filepath = 'cost_calculator.xlsx'
-set_id = 'Set 1'
-submodule_type = cfg.submodule_type
+plot = False
+xframes = generate_top_n_frames(1, xwall=True, plot=plot)
+yframes = generate_top_n_frames(1, xwall=False, plot=plot)
+floors = generate_top_n_floors(1, plot=plot)
 
-panel_parts = [{"name": "Floor 1", "type": "floor", "stream": "APB", "qty": 2, "width_in": 53, "length_in": 33, "water_height_in": 10, "wind_zone": "TC", "material": "SST-M3"},
-               {"name": "Wall 1", "type": "wall", "stream": "APB", "qty": 2, "width_in": 138, "height_in": 27, "water_height_in": 10, "wind_zone": "TC", "material": "SST-M3"}]
+final_designs = []
+for i, xwall in enumerate(xframes):
+    for j, ywall in enumerate(yframes):
+        for k, floor in enumerate(floors):
+            design = {
+                'xwall': xwall,
+                'id_xwall': i + 1,
+                'ywall': ywall,
+                'id_ywall': j + 1,
+                'floor': floor,
+                'id_floor': k + 1
+            }
+            final_designs.append(design)
 
-channel_parts = [{"name": "Channel 1", "qty": 4, "width_in": 2, "length_in": 10, "material": "SST-M3", "gauge": 8}]
+for i, design in enumerate(final_designs):
+    xwall = design['xwall']
+    id_xwall = design['id_xwall']
+    ywall = design['ywall']
+    id_ywall = design['id_ywall']
+    floor = design['floor']
+    id_floor = design['id_floor']
 
-part_entries = []
+    design_name = f"XW{id_xwall}_YW{id_ywall}_F{id_floor}"
 
-# for part in panel_parts:
-#     cut = gd.CUT_MSP if part["stream"] == "APB" else gd.CUT_MSL
-#     form = gd.FORM_APB if part["stream"] == "APB" else gd.FORM_MPB
-#     perimeter = 2 * (part["width_in"] + part["length_in"]) if part["type"] == "floor" else 2 * (part["width_in"] + part["height_in"])
-#     length = part["length_in"] if part["type"] == "floor" else part["height_in"]
-#     width = part["width_in"]
-#     g = [width, length, part["water_height_in"], part["wind_zone"], part["material"]]
-#     gauge = calculate_floor_gauge(g[0], g[1], g[2], g[4]) if part["type"] == "floor" else calculate_wall_gauge(g[0], g[1], g[2], g[3], g[4])
+    xwall_parts = get_wall_parts(xwall, design_name)
+    ywall_parts = get_wall_parts(ywall, design_name)
+    floor_parts = get_floor_parts(floor, design_name)
 
-#     part_entry = [set_id, part["name"], 
-#                   part["qty"], 
-#                   cut, 
-#                   form, 
-#                   part["material"], 
-#                   gauge, 
-#                   0, 
-#                   perimeter, 
-#                   4, 
-#                   4, 
-#                   width, 
-#                   length, 
-#                   'Class 1']
+    joints_x = extract_wall_joints(xwall, xwall_parts)
+    joints_y = extract_wall_joints(ywall, ywall_parts)
+    joints_f = extract_floor_joints(floor, floor_parts)
 
-#     part_entries.append(part_entry)
+    joints_fw = extract_floor_wall_joints(floor_parts, xwall_parts, ywall_parts)
 
-# for part in channel_parts:
-#     cut = gd.CUT_TL
-#     form = gd.FORM_RF
-#     perimeter = 2 * (part["width_in"] + part["length_in"])
-#     length = part["length_in"]
-#     width = part["width_in"]
+    design_part_entries = xwall_parts + ywall_parts + floor_parts
+    design_joint_entries = joints_x + joints_y + joints_f + joints_fw
 
-#     channel_entry = [set_id, part["name"], 
-#                      part["qty"], 
-#                      cut, 
-#                      form, 
-#                      part["material"], 
-#                      part["gauge"], 
-#                      0, 
-#                      perimeter, 
-#                      4, 
-#                      0,  
-#                      length,
-#                      width, 
-#                      'Class 1']
-
-#     part_entries.append(channel_entry)
-
-# cost = update_and_read_excel(filepath, part_entries, submodule_type=submodule_type)
+    filepath = "cost_calculator.xlsx"
+    values = update_and_read_excel(filepath, design_part_entries, design_joint_entries, submodule_type=cfg.submodule_type)
+    print(values)

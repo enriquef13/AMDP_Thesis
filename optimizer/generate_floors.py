@@ -382,17 +382,20 @@ def visualize_filled_floor(floor, design_name="", floor_width=cfg.x_in, floor_le
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
     plt.show()
 
-"""
-n_sols = 1
-top_floors = []
-for gauge in [10, 12, 14, 16, 18]:
-    floors = fill_floor_with_panels(gauge, n_sols=20)
-    top_floors.extend(floors)
+def generate_top_n_floors(n_top, plot=False):
+    top_floors = []
+    for gauge in [10, 12, 14, 16, 18]:
+        floors = fill_floor_with_panels(gauge, n_sols=20)
+        top_floors.extend(floors)
 
-print(f"Found {len(top_floors)} solutions. Showing top {n_sols} in terms of weight.")
-top_floors = sorted(top_floors, 
-                    key=lambda x: sum(panel[2] for panel in x['panels']) + sum(channel[2] for channel in x['channels']))[:n_sols] 
+    print(f"Found {len(top_floors)} solutions. Showing top {n_top} in terms of weight.")
+    top_floors = sorted(top_floors, 
+                        key=lambda x: sum(panel[2] for panel in x['panels']) + sum(channel[2] for channel in x['channels']))[:n_top] 
 
-for i, floor in enumerate(top_floors, start=1):
-    visualize_filled_floor(floor, add_channels=True, vertical=True, design_name=str(i))
-"""
+    if plot:
+        for i, floor in enumerate(top_floors, start=1):
+            visualize_filled_floor(floor, add_channels=True, vertical=True, design_name=f"Floor Design {i}")
+    
+    return top_floors
+
+

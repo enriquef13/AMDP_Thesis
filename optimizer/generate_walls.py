@@ -38,8 +38,6 @@ def generate_frame(x, z, channel_type, panel_material, num_nodes=12, display=Fal
 
     # Sort nodes and classify by edge
     sorted_nodes = dict(sorted(nodes.items(), key=lambda item: (item[1][1], item[1][0])))
-    left_id_nodes = [idx for idx, n in sorted_nodes.items() if n[0] == 0]
-    right_id_nodes = [idx for idx, n in sorted_nodes.items() if n[0] == x]
     top_id_nodes = [idx for idx, n in sorted_nodes.items() if n[1] == z]
     bottom_id_nodes = [idx for idx, n in sorted_nodes.items() if n[1] == 0]
 
@@ -95,7 +93,6 @@ def generate_frame(x, z, channel_type, panel_material, num_nodes=12, display=Fal
     # Material usage
     material = channel_type.material
     member_gauge = channel_type.gauge
-    member_profile = channel_type.profile_type
     cap = Capabilities(material, member_gauge)
     member_width = channel_type.width
     member_density = cap.density[cap.gauge_material]
@@ -221,30 +218,38 @@ def _add_diagonals(nodes, bottom_ids, top_ids, existing_members, plan="A"):
         raise ValueError(f"Unknown diagonal plan '{plan}'")
 
 
+def generate_top_n_frames(n_top, xwall = True,plot=False):
+    """
+    Generate a set of structural frames based on various configurations.
+    This function iterates through different combinations of channel materials,
+    panel materials, node counts, gauge options, profile types, and diagonal plans.
+    It returns a list of structurally sound designs.
+    """
+    channel_materials = [gd.GLV]
+    panel_materials = [cfg.material]
+    node_options = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]
+    gauge_options = [8, 10, 12, 14, 16, 18]
+    profile_options = ['C', 'Rectangular', 'Hat', 'Double C', 'I']
+    diagonal_plans = ['A', 'B', 'C', 'D']
 
-channel_materials = [gd.GLV, gd.SST]
-panel_materials = [cfg.material]
-node_options = [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]
-gauge_options = [8, 10, 12, 14, 16, 18]
-profile_options = ['C', 'Rectangular', 'Hat', 'Double C', 'I']
-diagonal_plans = ['A', 'B', 'C', 'D']
+    results = []
 
-results = []
+    total_combos = len(channel_materials) * len(panel_materials) * len(node_options) * len(gauge_options) * len(profile_options) * len(diagonal_plans)
 
-total_combos = len(channel_materials) * len(panel_materials) * len(node_options) * len(gauge_options) * len(profile_options) * len(diagonal_plans)
-print(f"Evaluating {total_combos} combinations...\n")
+    combo_id = 0
 
-combo_id = 1
+    for ch_mat, pnl_mat, n_nodes, gauge, profile_type, diag_plan in itertools.product(channel_materials, panel_materials, node_options, gauge_options, profile_options, diagonal_plans):
+        combo_id += 1
+        try:
+            print(f"[{combo_id}/{total_combos}] Channel={ch_mat}, Panel={pnl_mat}, Nodes={n_nodes}, Gauge={gauge}, Profile={profile_type}, Plan={diag_plan}")
 
-for ch_mat, pnl_mat, n_nodes, gauge, profile_type, diag_plan in itertools.product(channel_materials, panel_materials, node_options, gauge_options, profile_options, diagonal_plans):
-    try:
-        print(f"[{combo_id}/{total_combos}] Channel={ch_mat}, Panel={pnl_mat}, Nodes={n_nodes}, Gauge={gauge}, Profile={profile_type}, Plan={diag_plan}")
-        
-        # Set cfg material for panel first
-        cfg.material = pnl_mat
-        
-        # Define channel separately
-        channel_type = Profile(ch_mat, gauge, profile_type)
+            # Set cfg material for panel first
+            cfg.material = pnl_mat
+            
+            # Define channel separately
+            channel_type = Profile(ch_mat, gauge, profile_type)
+
+            dim = cfg.x_in if xwall else cfg.y_in
 
         frame = generate_frame(
             cfg.x_in, cfg.z_in,
@@ -254,73 +259,79 @@ for ch_mat, pnl_mat, n_nodes, gauge, profile_type, diag_plan in itertools.produc
             display=False,
             diagonal_plan=diag_plan
         )
-    
+        
+        frame = frames[0]
         nodes, members = frame[0], frame[1]
         q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
 
-        is_structural = calculate_wall_frame_structural(
-            nodes,
-            members,
-            channel_type,
-            q=q,
-            display=False,
-            plot=False
-        )
+            is_structural = calculate_wall_frame_structural(
+                nodes,
+                members,
+                channel_type,
+                q=q,
+                display=False,
+                plot=False
+            )
 
-        if not is_structural:
-            print("  ❌ Frame failed structural check.")
-            continue
+            if not is_structural:
+                print("  ❌ Frame failed structural check.")
+                continue
 
-        metrics = frame[2]
-        results.append({
-            "Channel Material": ch_mat,
-            "Panel Material": pnl_mat,
-            "Nodes": n_nodes,
-            "Gauge": gauge,
-            "Profile": profile_type,
-            "Diagonal Plan": diag_plan,
-            "Total Mass": metrics["total_mass"],
-            "Total Member Mass": metrics["total_member_mass"],
-            "Total Panel Mass": metrics["total_panel_mass"],
-            "Wall Gauge": metrics["wall_gauge"],
-            "Frame Data": frame,
-            "Channel Type": channel_type
-        })
+            metrics = frame[2]
+            results.append({
+                "Channel Material": ch_mat,
+                "Panel Material": pnl_mat,
+                "Nodes": n_nodes,
+                "Gauge": gauge,
+                "Profile": profile_type,
+                "Diagonal Plan": diag_plan,
+                "Total Mass": metrics["total_mass"],
+                "Total Member Mass": metrics["total_member_mass"],
+                "Total Panel Mass": metrics["total_panel_mass"],
+                "Wall Gauge": metrics["wall_gauge"],
+                "Frame Data": frame,
+                "Channel Type": channel_type
+            })
 
-    except Exception as e:
-        print(f"  ⚠️ Skipped due to error: {e}")
+        except Exception as e:
+            print(f"  ⚠️ Skipped due to error: {e}")
 
-    combo_id += 1
+        # Sort and display top designs
+    df_results = pd.DataFrame(results)
+    df_sorted = df_results.sort_values(by="Total Mass").reset_index(drop=True)
 
-# Sort and display top designs
-df_results = pd.DataFrame(results)
-df_sorted = df_results.sort_values(by="Total Mass").reset_index(drop=True)
+    print(f"\n✅ {len(df_sorted)} structurally sound designs found out of {total_combos} combinations.")
 
-print(f"\n✅ {len(df_sorted)} structurally sound designs found out of {total_combos} combinations.")
+    n = n_top
+    print(f"\n=== Top {n} Structurally Sound Designs ===")
+    top_n = df_sorted.head(n)
 
-n = 5
-print(f"\n=== Top {n} Structurally Sound Designs ===")
-top_n = df_sorted.head(n)
+    top_frames = []
 
-for i, row in top_n.iterrows():
-    print(f"\n🔹 Design {i+1}")
-    
-    frame_data = row['Frame Data']
-    channel_type = row['Channel Type']
-    nodes, members = frame_data[0], frame_data[1]
-    metrics = frame_data[2]
-    q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
+    wall_type = 'X Wall' if xwall else 'Y Wall'
 
-    try:
-        calculate_wall_frame_structural(
-            nodes,
-            members,
-            channel_type,
-            q=q,
-            display=True,
-            plot=True,
-            title=f"Design {i+1}",
-            metrics=metrics
-        )
-    except Exception as e:
-        print(f"  ❌ Error plotting design: {e}")
+    for i, row in top_n.iterrows():
+        print(f"\n🔹 Design {i+1}")
+        
+        frame_data = row['Frame Data']
+        top_frames.append(frame_data)
+        channel_type = row['Channel Type']
+        nodes, members = frame_data[0], frame_data[1]
+        metrics = frame_data[2]
+        q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
+
+        try:
+            calculate_wall_frame_structural(
+                nodes,
+                members,
+                channel_type,
+                q=q,
+                display=False,
+                plot=plot,
+                title=f"{wall_type} Design {i+1}",
+                metrics=metrics
+            )
+        except Exception as e:
+            print(f"  ❌ Error plotting design: {e}")
+
+"""

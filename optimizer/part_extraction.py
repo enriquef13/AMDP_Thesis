@@ -31,7 +31,7 @@ def get_wall_parts(frame, design_name):
     special_case = channel_data.profile_type == 'I' and gd.I_IS_DOUBLE_C
     channel_gauge = channel_data.gauge
     channel_material = channel_data.material
-    channel_width = channel_data.width if not special_case else Profile(channel_material, channel_gauge, "C").width
+    channel_width = channel_data.width if not special_case else 9.6875 # Width for double C profile
     channel_bends = channel_data.unique_bends
 
     h_channel_length = _get_horizontal_channel_length(nodes)
@@ -142,7 +142,7 @@ def get_floor_parts(floor, design_name):
     channel_length = channels[0][1]
     channel_gauge = gd.FLOOR_BEAMS.gauge
     channel_material = gd.FLOOR_BEAMS.material
-    channel_width = gd.FLOOR_BEAMS.width if not gd.I_IS_DOUBLE_C else Profile(gd.FLOOR_BEAMS.material, gd.FLOOR_BEAMS.gauge, "C").width
+    channel_width = gd.FLOOR_BEAMS.width if not gd.I_IS_DOUBLE_C else 9.6875  # Width for double C profile
     channel_bends = gd.FLOOR_BEAMS.unique_bends
 
     channel_entry = _get_entry(design_name, f"F_Channel_{design_name}", channel_width, channel_length,
@@ -152,25 +152,25 @@ def get_floor_parts(floor, design_name):
 
     return part_entries
 
-from generate_walls import generate_frame
-from structural_frames import calculate_wall_frame_structural
-from generate_floors import fill_floor_with_panels, visualize_filled_floor
-from profiles import Profile
+# from generate_walls import generate_frame
+# from structural_frames import calculate_wall_frame_structural
+# from generate_floors import fill_floor_with_panels, visualize_filled_floor
+# from profiles import Profile
 
-design_name = "XW1_YW1_F1"
-channel_type = Profile(cfg.material, 10, "I")
-x_frame = generate_frame(cfg.x_in, cfg.z_in, channel_type, cfg.material, num_nodes=12, diagonal_plan="C")
-y_frame = generate_frame(cfg.y_in, cfg.z_in, channel_type, cfg.material, num_nodes=12, diagonal_plan="A")
-floor = fill_floor_with_panels(10, n_sols=1, display=False)
+# design_name = "XW1_YW1_F1"
+# channel_type = Profile(cfg.material, 10, "I")
+# x_frame = generate_frame(cfg.x_in, cfg.z_in, channel_type, cfg.material, num_nodes=12, diagonal_plan="C")
+# y_frame = generate_frame(cfg.y_in, cfg.z_in, channel_type, cfg.material, num_nodes=12, diagonal_plan="A")
+# floor = fill_floor_with_panels(10, n_sols=1, display=False)
 
-x_entries = get_wall_parts(x_frame, design_name)
-y_entries = get_wall_parts(y_frame, design_name)
-calculate_wall_frame_structural(x_frame[0], x_frame[1], channel_type, 10, title=design_name, plot=True, metrics=x_frame[2])
-calculate_wall_frame_structural(y_frame[0], y_frame[1], channel_type, 10, title=design_name, plot=True, metrics=y_frame[2])
-visualize_filled_floor(floor, design_name)
-floor_entries = get_floor_parts(floor, design_name)
+# x_entries = get_wall_parts(x_frame, design_name)
+# y_entries = get_wall_parts(y_frame, design_name)
+# calculate_wall_frame_structural(x_frame[0], x_frame[1], channel_type, 10, title=design_name, plot=True, metrics=x_frame[2])
+# calculate_wall_frame_structural(y_frame[0], y_frame[1], channel_type, 10, title=design_name, plot=True, metrics=y_frame[2])
+# visualize_filled_floor(floor, design_name)
+# floor_entries = get_floor_parts(floor, design_name)
 
 
-part_entries = x_entries + y_entries + floor_entries
-for entry in part_entries:
-    print(entry)
+# part_entries = x_entries + y_entries + floor_entries
+# for entry in part_entries:
+#     print(entry)

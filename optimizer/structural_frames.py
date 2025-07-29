@@ -4,6 +4,7 @@ from scipy.linalg import solve # type: ignore
 import matplotlib.pyplot as plt # type: ignore
 import matplotlib.patches as patches # type: ignore
 from matplotlib.lines import Line2D # type: ignore
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox  # type: ignore
 import general_data as gd
 import config as cfg
 import os
@@ -253,14 +254,22 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
 
         plt.subplots_adjust(top=0.75)  
 
-        if plot: plt.show()
         if store_plot:
+            image_path = "basin_x.png" if "XW" in title else "basin_y.png"
+            if os.path.exists(image_path):
+                img = plt.imread(image_path)
+                imagebox = OffsetImage(img, zoom=0.05)  # Adjust zoom to control image size
+                ab = AnnotationBbox(imagebox, (1.05, 1.2), xycoords='axes fraction', frameon=False)
+                ax.add_artist(ab)
+
+        if plot: plt.show()
+
+        if store_plot:        
             path = cfg.store_path
             if not os.path.exists(path):
                 os.makedirs(path)
             fig.savefig(f"{path}/{title}.png", bbox_inches='tight', dpi=300)
             plt.close(fig)
-
 
     # Return structural soundness
     return len(failed_members) == 0 and len(deflected_members) == 0

@@ -12,7 +12,7 @@ top_load = 40000                                # Uniform load on top edges (lbf
 cost_calc_path = 'cost_calculator.xlsx'         # Path to the Cost Calculator Excel file
 store_path = 'temp_plots/'                      # Path to store generated plots
 n_top_final_designs = 15                        # Number of top designs to consider
-n_configurations = 20                           # Number of design configurations used to generate the top designs
+n_configurations = 1                           # Number of design configurations used to generate the top designs
 
 # # Dimensions for GAC CWB
 # x_in = 235

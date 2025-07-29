@@ -17,19 +17,16 @@ SST = 'SST-M3'
 WALL = 'Wall'
 FLOOR = 'Floor'
 
-# Safety Factor (for yield strength in walls and floors)
-SF = 2
-
 RESISTANCE_FACTORS = {
     SST: {"buckling": 0.85, "axial": 0.85, "shear": 0.95, "bending": 0.85},
     GLV: {"buckling": 0.90, "axial": 0.85, "shear": 0.95, "bending": 0.85}
 }
 
 DEFLECTION_LIMIT = 1/240
-
 LOAD_FACTOR = 1.6
-
-EFFECTIVE_LENGTH_FACTOR = 1.2   
+EFFECTIVE_LENGTH_FACTOR = 1.2      
+WIND_RESISTANCE_FACTOR = 1.15       
+YIELD_SF = 2                        
 
 MATERIALS = {
     SST: {"yield_strength": 35000, "elastic_mod": 28000000, "youngs_mod": 28000000}, # psi
@@ -73,4 +70,14 @@ WATER_COLLECTION_WELDED = 'Water Collection Welded'
 WATER_COLLECTION_TRIARMOR = 'Water Collection TriArmor'
 WATER_COLLECTION_UNWELDED = 'Water Collection Unwelded'
 WATER_DISTRIBUTION = 'Water Distribution'
-     
+
+RESISTANCE_FACTORS = {
+    SST: {"buckling": 0.85, "axial": 0.85, "shear": 0.95, "bending": 0.85},
+    GLV: {"buckling": 0.90, "axial": 0.85, "shear": 0.95, "bending": 0.85}
+}
+
+DEFLECTION_LIMIT = 1/240
+
+LOAD_FACTOR = 1.6
+
+EFFECTIVE_LENGTH_FACTOR = 1.2        

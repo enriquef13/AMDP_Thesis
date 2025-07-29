@@ -132,7 +132,7 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material=gd.SST,
     deflection_limit_factor = gd.DEFLECTION_LIMIT
     deflection_limit = a * deflection_limit_factor # inches
     t_avoid_deflection_in = np.power((alpha * water_pressure_psi * b**4) / (E * deflection_limit), 1/3)
-    if display: print(f"Thickness to avoid {deflection_limit:.2f}\" (L/240) deflection: {t_avoid_deflection_in:.3f}\"")
+    if display: print(f"Thickness to avoid {deflection_limit:.2f}\" L/{1/deflection_limit_factor:.0f} deflection: {t_avoid_deflection_in:.3f}\"")
 
     # Required thickness is the maximum of the two
     t_required_in = max(t_prevent_yield_in, t_avoid_deflection_in)

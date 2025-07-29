@@ -70,14 +70,4 @@ WATER_COLLECTION_WELDED = 'Water Collection Welded'
 WATER_COLLECTION_TRIARMOR = 'Water Collection TriArmor'
 WATER_COLLECTION_UNWELDED = 'Water Collection Unwelded'
 WATER_DISTRIBUTION = 'Water Distribution'
-
-RESISTANCE_FACTORS = {
-    SST: {"buckling": 0.85, "axial": 0.85, "shear": 0.95, "bending": 0.85},
-    GLV: {"buckling": 0.90, "axial": 0.85, "shear": 0.95, "bending": 0.85}
-}
-
-DEFLECTION_LIMIT = 1/240
-
-LOAD_FACTOR = 1.6
-
-EFFECTIVE_LENGTH_FACTOR = 1.2        
+      

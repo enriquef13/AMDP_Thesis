@@ -27,7 +27,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
     c = channel.c  # Distance from neutral axis to extreme fiber (in)
 
     K = 1.2                             # Effective length factor (pinned-pinned)
-    load_factor = 1.5                   # Load factor (LRFD)
+    load_factor = 1.4                   # Load factor (LRFD)
     resistance_factor = 0.9             # Resistance factor (LRFD)
     max_deflection_ratio = 1/240        # Deflection limit
 

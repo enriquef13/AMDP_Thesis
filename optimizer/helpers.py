@@ -74,11 +74,9 @@ def get_top_n_designs(design_summary_df, n=15):
 
     return dict(top_designs)
 
-def get_top_part_and_joint_entries(top_designs, final_part_entries, final_joint_entries):
+def get_top_part_and_joint_entries(top_designs, part_entries, joint_entries):
     """
-    For each design in top_designs, update the first column of part/joint entries to the design_name,
-    and replace the text after the last "_" in the second column with the design_name.
-    Returns updated part and joint entries for the top designs.
+    Get part and joint entries for the top designs.
     """
     updated_part_entries = []
     updated_joint_entries = []
@@ -131,13 +129,11 @@ def get_top_part_and_joint_entries(top_designs, final_part_entries, final_joint_
                     new_entry[1] = replace_part_name_with_design(partB, design_name)
                     updated.append(new_entry)
         return updated
-            
 
-    updated_part_entries = update_parts(final_part_entries)
-    updated_joint_entries = update_joints(final_joint_entries)
+    updated_part_entries = update_parts(part_entries)
+    updated_joint_entries = update_joints(joint_entries)
 
     # Group updated_part_entries by part_set (the first entry in each row)
-
     part_set_groups = defaultdict(list)
     for entry in updated_part_entries:
         part_set = entry[0]

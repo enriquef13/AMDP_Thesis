@@ -298,6 +298,7 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
     current_x = 0
     current_y = 0
 
+    two_row = False
     for panel in panels:
         panel_width, panel_length, _ = panel
         
@@ -306,6 +307,7 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
             # Move to the next row
             current_x = 0
             current_y += last_panel_length
+            two_row = True
 
         # Draw the panel as a rectangle
         rect = patches.Rectangle((current_x, current_y), panel_width, panel_length, linewidth=3, 
@@ -377,6 +379,9 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
         fig.text(0.63, text_y, f"{channel_ratio}%", fontsize=14, ha='left', va='top', color='red')
         fig.text(0.68, text_y, " | ", fontsize=14, ha='left', va='top', color='black')
         fig.text(0.70, text_y, f"{panel_ratio}%", fontsize=14, ha='left', va='top', color='blue')
+
+        if two_row: 
+            fig.text(0.74, 0.02, f"* Panels should be staggered", fontsize=10, ha='left', va='top', color='black')
 
         plt.subplots_adjust(top=0.75)  # Adjust top margin to fit the text
 

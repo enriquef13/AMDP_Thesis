@@ -149,6 +149,4 @@ def get_top_part_and_joint_entries(top_designs, part_entries, joint_entries):
     for part_set, entries in part_set_groups.items():
         process_part_set(entries)
 
-
     return updated_part_entries, updated_joint_entries
-    

@@ -18,8 +18,7 @@ Plate bending formulas: https://jackson.engr.tamu.edu/wp-content/uploads/sites/2
 """
 
 import numpy as np # type: ignore
-from general_data import MATERIALS, GAUGES, BETA_FLOOR, ALPHA_FLOOR, BETA_WALL, GAMMA_WALL, WIND_PRESSURE_RATINGS, SF
-from general_data import WIND_NTC, WIND_TC, WIND_TCM, SST, GLV
+import general_data as gd
 
 def _interpolate_key(a_b, dictionary):
     d_keys = sorted(dictionary.keys())
@@ -38,7 +37,7 @@ def _interpolate_key(a_b, dictionary):
         # Linear interpolation
         return lower_value + (upper_value - lower_value) * ((a_b - lower_key) / (upper_key - lower_key))
 
-def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone=WIND_NTC, material=SST, display=False):
+def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone=gd.WIND_NTC, material=gd.SST, display=False):
     """
     Calculate required sheet thickness for a wall.
 
@@ -50,11 +49,11 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone=WIND_NT
     """
 
     # Calculate allowable stress based on material properties
-    props = MATERIALS[material]
-    S_allow = props["yield_strength"] / SF  # psi (safety factor of 2.5)
+    props = gd.MATERIALS[material]
+    S_allow = props["yield_strength"] / gd.YIELD_SF  # psi (safety factor of 2.5)
 
     # Obtain wind pressure rating and convert to psi
-    wind_pressure_psi = (WIND_PRESSURE_RATINGS[wind_zone] / 144) * 1.15  # psi (1.15 is a safety factor for wind pressure)
+    wind_pressure_psi = (gd.WIND_PRESSURE_RATINGS[wind_zone] / 144) * gd.WIND_RESISTANCE_FACTOR
 
     # Hydrostatic pressure at bottom of wall (psi)
     gamma_water = 0.03603  # lbf/in³ (P = rho * g * h -> gamma = rho * g; rho = 62.4 lb/ft³, g = 32.2 ft/s²)
@@ -69,19 +68,19 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone=WIND_NT
 
     # Find closest aspect ratio to match BETA_WALL table indices
     a_b = width_in / height_in  # Aspect ratio of the wall
-    if a_b > max(BETA_WALL.keys()):
+    if a_b > max(gd.BETA_WALL.keys()):
         if display:
-            print(f"Aspect ratio {a_b:.2f} exceeds maximum of {max(BETA_WALL.keys()):.2f}. Returning None.")
+            print(f"Aspect ratio {a_b:.2f} exceeds maximum of {max(gd.BETA_WALL.keys()):.2f}. Returning None.")
         return None, None
 
-    beta = _interpolate_key(a_b, BETA_WALL)
+    beta = _interpolate_key(a_b, gd.BETA_WALL)
 
     # Calculate required thickness using plate bending formula
     t_required_in = np.sqrt((beta * total_pressure_psi * height_in**2) / (S_allow))
     if display: print(f"Required thickness: {t_required_in:.3f}\"")
 
     # Find closest (upper) gauge thickness
-    gauge_dict = GAUGES[material]
+    gauge_dict = gd.GAUGES[material]
     thickness_warning = t_required_in >= max(gauge_dict.keys())
     t_closest_in = min(gauge_dict.keys(), 
                        key=lambda x: abs(x - t_required_in) if x >= t_required_in else float('inf')
@@ -98,7 +97,7 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone=WIND_NT
     return t_required_in, gauge_dict[t_closest_in]
 
 
-def calculate_floor_gauge(width_in, length_in, water_height_in, material=SST, display=False):
+def calculate_floor_gauge(width_in, length_in, water_height_in, material=gd.SST, display=False):
     """
     Calculate required thickness for a floor panel.
 
@@ -109,8 +108,8 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material=SST, di
     """
 
     # Obtain allowable stress and elastic modulus
-    props = MATERIALS[material]
-    S_allow = props["yield_strength"] / SF # psi
+    props = gd.MATERIALS[material]
+    S_allow = props["yield_strength"] / gd.YIELD_SF # psi
     E = props["elastic_mod"]  # psi
 
     # Hydrostatic pressure at bottom of floor (psi)
@@ -122,8 +121,8 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material=SST, di
     a = max(width_in, length_in)
     b = min(width_in, length_in)
     a_b = a / b  # Aspect ratio of the floor    
-    beta = _interpolate_key(a_b, BETA_FLOOR)
-    alpha = _interpolate_key(a_b, ALPHA_FLOOR)
+    beta = _interpolate_key(a_b, gd.BETA_FLOOR)
+    alpha = _interpolate_key(a_b, gd.ALPHA_FLOOR)
 
     # Calculate required thickness using allowable stress
     t_prevent_yield_in = np.sqrt((beta * water_pressure_psi * b**2) / (S_allow))
@@ -138,7 +137,7 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material=SST, di
     t_required_in = max(t_prevent_yield_in, t_avoid_deflection_in)
 
     # Find closest (upper) gauge thickness
-    gauge_dict = GAUGES[material]
+    gauge_dict = gd.GAUGES[material]
     thickness_warning = t_required_in >= max(gauge_dict.keys())
     t_closest_in = min(gauge_dict.keys(), 
                        key=lambda x: abs(x - t_required_in) if x >= t_required_in else float('inf')

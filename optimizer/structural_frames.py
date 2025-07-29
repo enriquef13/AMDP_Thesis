@@ -26,10 +26,11 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
     I = channel.I  # Area moment of inertia (in^4)
     c = channel.c  # Distance from neutral axis to extreme fiber (in)
 
-    K = 1.2                             # Effective length factor (pinned-pinned)
-    load_factor = 1.4                   # Load factor (LRFD)
-    resistance_factor = 0.9             # Resistance factor (LRFD)
-    max_deflection_ratio = 1/240        # Deflection limit
+    # Load and Resistance Factors
+    K = gd.K
+    load_factor = gd.LOAD_FACTOR
+    resistance_factor = gd.RESISTANCE_FACTOR
+    max_deflection_ratio = gd.MAX_DEFLECTION_RATIO
 
     # Filter out invalid members (non-existent in nodes dictionary)
     members = [m for m in members if m[0] in nodes and m[1] in nodes]

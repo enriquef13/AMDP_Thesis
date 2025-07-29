@@ -4,9 +4,7 @@ from scipy.linalg import solve # type: ignore
 import matplotlib.pyplot as plt # type: ignore
 import matplotlib.patches as patches # type: ignore
 from matplotlib.lines import Line2D # type: ignore
-from profiles import Profile
 import general_data as gd
-import config as cfg
 
 def calculate_wall_frame_structural(nodes, members, channel, q, display=False, plot=False, title=None, metrics=None):
     """
@@ -292,7 +290,6 @@ def _frame_stiffness(x1, y1, x2, y2, E, A, I):
     ])
 
     return T.T @ k_local @ T, L
-
 
 def distribute_load(x, y, q):
     perimeter = 2 * (x + y)

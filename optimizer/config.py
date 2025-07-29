@@ -9,6 +9,7 @@ z_in = 27                                       # Basin height in inches
 water_height_in = 15                            # Water height in inches
 wind_zone = gd.WIND_NTC                         # Wind zone classification (gd.WIND_NTC, gd.WIND_TC, or gd.WIND_TCM)
 top_load = 40000 # 11540.0584                           # Uniform load on top edges (lbf)
+cost_calc_path = 'cost_calculator.xlsx'         # Path to the Cost Calculator Excel file
 
 # # Dimensions for GAC CWB
 # x_in = 235

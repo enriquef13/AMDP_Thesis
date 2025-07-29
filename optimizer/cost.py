@@ -27,9 +27,36 @@ def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_
     joint_sheet_name = 'Joints List'
     summary_sheet_name = 'Summary'
 
+    def _clear_excel_contents():
+        """
+        Clear the contents of the specified sheets in the Excel file.
+        """
+        try:
+            part_sheet = workbook[part_sheet_name]
+            joint_sheet = workbook[joint_sheet_name]
+            summary_sheet = workbook[summary_sheet_name]
+
+            for row in part_sheet.iter_rows(min_row=part_start_row, max_col=14, max_row=part_sheet.max_row):
+                for cell in row:
+                    cell.value = None
+
+            for row in joint_sheet.iter_rows(min_row=joint_start_row, max_col=3, max_row=joint_sheet.max_row):
+                for cell in row:
+                    cell.value = None
+
+            for row in summary_sheet.iter_rows(min_row=summary_row, max_col=2, max_row=summary_sheet.max_row):
+                for cell in row:
+                    cell.value = None
+
+            workbook.save(filepath)
+        except Exception as e:
+            print(f"Error clearing Excel contents: {e}")
+
     try:
         # Load the workbook and sheet
         workbook = load_workbook(filepath)
+        _clear_excel_contents()
+
         part_sheet = workbook[part_sheet_name]
 
         # Write part entries to the Excel file
@@ -37,7 +64,7 @@ def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_
             for j, value in enumerate(entry):
                 part_sheet.cell(row=part_start_row + i, column=j + 1, value=value)
 
-        # # Write joint entries to the Excel file
+        # Write joint entries to the Excel file
         if joint_entries is not None:
             joint_sheet = workbook[joint_sheet_name]
             for i, joint in enumerate(joint_entries):

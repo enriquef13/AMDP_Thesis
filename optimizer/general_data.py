@@ -17,13 +17,16 @@ SST = 'SST-M3'
 WALL = 'Wall'
 FLOOR = 'Floor'
 
-# Load and Resistance Factors
-K = 1.2                             # Effective length factor (pinned-pinned)
-LOAD_FACTOR = 1.4                   # Load factor (LRFD)
-RESISTANCE_FACTOR = 0.9             # Resistance factor (LRFD)
-MAX_DEFLECTION_RATIO = 1/240        # Deflection limit (LRFD)
-WIND_RESISTANCE_FACTOR = 1.15       # Wind resistance factor (LRFD)
-YIELD_SF = 2                        # Safety Factor (ASD)
+RESISTANCE_FACTORS = {
+    SST: {"buckling": 0.85, "axial": 0.85, "shear": 0.95, "bending": 0.85},
+    GLV: {"buckling": 0.90, "axial": 0.85, "shear": 0.95, "bending": 0.85}
+}
+
+DEFLECTION_LIMIT = 1/240
+LOAD_FACTOR = 1.6
+EFFECTIVE_LENGTH_FACTOR = 1.2      
+WIND_RESISTANCE_FACTOR = 1.15       
+YIELD_SF = 2                        
 
 MATERIALS = {
     SST: {"yield_strength": 35000, "elastic_mod": 28000000, "youngs_mod": 28000000}, # psi
@@ -72,15 +75,4 @@ I_IS_DOUBLE_C = True
 WATER_COLLECTION_WELDED = 'Water Collection Welded'
 WATER_COLLECTION_TRIARMOR = 'Water Collection TriArmor'
 WATER_COLLECTION_UNWELDED = 'Water Collection Unwelded'
-WATER_DISTRIBUTION = 'Water Distribution'
-
-RESISTANCE_FACTORS = {
-    SST: {"buckling": 0.85, "axial": 0.85, "shear": 0.95, "bending": 0.85},
-    GLV: {"buckling": 0.90, "axial": 0.85, "shear": 0.95, "bending": 0.85}
-}
-
-DEFLECTION_LIMIT = 1/240
-
-LOAD_FACTOR = 1.6
-
-EFFECTIVE_LENGTH_FACTOR = 1.2        
+WATER_DISTRIBUTION = 'Water Distribution'  

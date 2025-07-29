@@ -5,6 +5,7 @@ import math
 from matplotlib.lines import Line2D # type: ignore
 import matplotlib.pyplot as plt # type: ignore
 import matplotlib.patches as patches # type: ignore
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox  # type: ignore
 from structural_panels import calculate_floor_gauge, calculate_wall_gauge
 import numpy as np # type: ignore
 import math
@@ -315,11 +316,11 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
         center_x = current_x + panel_width / 2
         center_y = current_y + panel_length / 2
         if panel_width > panel_length:
-            ax.text(center_x, center_y, f"{panel_width:.0f} x {panel_length:.0f}", 
-                    ha='center', va='center', fontsize=16, color='black', fontweight='bold')
+            ax.text(center_x, center_y, f"{panel_width:.0f}\nx\n{panel_length:.0f}", 
+                    ha='center', va='center', fontsize=12, color='black', fontweight='bold')
         else:
             ax.text(center_x, center_y, f"{panel_width:.0f} x {panel_length:.0f}", 
-                    ha='center', va='center', fontsize=16, color='black', rotation=90, fontweight='bold')
+                    ha='center', va='center', fontsize=12, color='black', rotation=90, fontweight='bold')
         
         # Move the x position for the next panel
         current_x += panel_width
@@ -381,7 +382,16 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
 
     # Show the plot
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
+    if store_plot:
+        image_path = "basin_f.png"
+        if os.path.exists(image_path):
+            img = plt.imread(image_path)
+            imagebox = OffsetImage(img, zoom=0.05)  # Adjust zoom to control image size
+            ab = AnnotationBbox(imagebox, (0.97, 1.15), xycoords='axes fraction', frameon=False)
+            ax.add_artist(ab)
+
     if plot: plt.show()
+
     if store_plot:
         path = cfg.store_path
         if not os.path.exists(path):

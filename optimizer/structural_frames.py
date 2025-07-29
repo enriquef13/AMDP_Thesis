@@ -256,14 +256,14 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
         ]
         ax.legend(handles=legend_elements, loc='upper right', fontsize=10)
 
-        plt.subplots_adjust(top=0.75)  
+        plt.subplots_adjust(top=0.78)  
 
         if store_plot:
             image_path = "basin_x.png" if "XW" in title else "basin_y.png"
             if os.path.exists(image_path):
                 img = plt.imread(image_path)
                 imagebox = OffsetImage(img, zoom=0.05)  # Adjust zoom to control image size
-                ab = AnnotationBbox(imagebox, (1.05, 1.2), xycoords='axes fraction', frameon=False)
+                ab = AnnotationBbox(imagebox, (1.05, 1.15), xycoords='axes fraction', frameon=False)
                 ax.add_artist(ab)
 
         if plot: plt.show()

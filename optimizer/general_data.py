@@ -59,11 +59,9 @@ GAMMA_WALL = {
 
 from profiles import Profile
 FLOOR_BEAMS = Profile(material=GLV, gauge=12, profile_type='I')
-
 I_IS_DOUBLE_C = True
 
 WATER_COLLECTION_WELDED = 'Water Collection Welded'
 WATER_COLLECTION_TRIARMOR = 'Water Collection TriArmor'
 WATER_COLLECTION_UNWELDED = 'Water Collection Unwelded'
 WATER_DISTRIBUTION = 'Water Distribution'
-      

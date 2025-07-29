@@ -15,7 +15,7 @@ Analysis of manufacturing capabilities of Tube Laser, Automatic Panel Bender, an
 iLogic script to automatically detect all the joint lengths between components in an Autodesk Inventor assembly. This is performed using geometric proximity between parts.
 
 ### optimizer
-Program to automatically generate an automation friendly, low-cost water distribution or water collection sub-module. Dependencies are as follows:
+Program to automatically generate an automation friendly, low-cost water distribution or water collection sub-module. main.py needs to be executed within the optimizer/ folder for relative paths to work. Library dependencies are as follows:
 - numpy 2.2.6
 - pandas 2.2.3
 - openpyxl 3.1.5

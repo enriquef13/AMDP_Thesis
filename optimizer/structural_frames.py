@@ -259,7 +259,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
         plt.subplots_adjust(top=0.78)  
 
         if store_plot:
-            image_path = "basin_x.png" if "XW" in title else "basin_y.png"
+            image_path = "graphics/basin_x.png" if "XW" in title else "graphics/basin_y.png"
             if os.path.exists(image_path):
                 img = plt.imread(image_path)
                 imagebox = OffsetImage(img, zoom=0.05)  # Adjust zoom to control image size

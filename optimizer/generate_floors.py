@@ -388,7 +388,7 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
     # Show the plot
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
     if store_plot:
-        image_path = "basin_f.png"
+        image_path = "graphics/basin_f.png"
         if os.path.exists(image_path):
             img = plt.imread(image_path)
             imagebox = OffsetImage(img, zoom=0.05)  # Adjust zoom to control image size

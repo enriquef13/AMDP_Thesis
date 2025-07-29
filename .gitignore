@@ -45,8 +45,6 @@ Thumbs.db
 !optimizer/graphics/basin_y.png
 !optimizer/graphics/basin_f.png
 
-# Project specific
-
 # Folders within the optimizer directory
 optimizer/__pycache__/
 optimizer/*.pyc

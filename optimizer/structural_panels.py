@@ -18,7 +18,7 @@ Plate bending formulas: https://jackson.engr.tamu.edu/wp-content/uploads/sites/2
 """
 
 import numpy as np # type: ignore
-from general_data import MATERIALS, GAUGES, BETA_FLOOR, ALPHA_FLOOR, BETA_WALL, GAMMA_WALL, WIND_PRESSURE_RATINGS, SF
+from general_data import MATERIALS, GAUGES, BETA_FLOOR, ALPHA_FLOOR, BETA_WALL, GAMMA_WALL, WIND_PRESSURE_RATINGS, SF, DEFLECTION_LIMIT
 from general_data import WIND_NTC, WIND_TC, WIND_TCM, SST, GLV
 
 def _interpolate_key(a_b, dictionary):
@@ -130,7 +130,8 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material=SST, di
     if display: print(f"Thickness to avoid yield: {t_prevent_yield_in:.3f}\"")
 
     # Calculate thickness to avoid deflection
-    deflection_limit = a/240 # inches
+    deflection_limit_factor = DEFLECTION_LIMIT
+    deflection_limit = a * deflection_limit_factor # inches
     t_avoid_deflection_in = np.power((alpha * water_pressure_psi * b**4) / (E * deflection_limit), 1/3)
     if display: print(f"Thickness to avoid {deflection_limit:.2f}\" (L/240) deflection: {t_avoid_deflection_in:.3f}\"")
 

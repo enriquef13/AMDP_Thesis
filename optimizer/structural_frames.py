@@ -26,10 +26,15 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
     I = channel.I  # Area moment of inertia (in^4)
     c = channel.c  # Distance from neutral axis to extreme fiber (in)
 
-    K = 1.2                             # Effective length factor (pinned-pinned)
-    load_factor = 1.5                   # Load factor (LRFD)
-    resistance_factor = 0.9             # Resistance factor (LRFD)
-    max_deflection_ratio = 1/240        # Deflection limit
+    K = gd.EFFECTIVE_LENGTH_FACTOR                  # Effective length factor (pinned-pinned)
+    load_factor = gd.LOAD_FACTOR                    # Load factor (LRFD)
+    max_deflection_ratio = gd.DEFLECTION_LIMIT      # Deflection limit
+
+    # Resistance factors for buckling, axial, shear, and bending
+    buckling_resistance_factor = gd.RESISTANCE_FACTORS[channel.material]["buckling"]
+    axial_resistance_factor = gd.RESISTANCE_FACTORS[channel.material]["axial"]
+    shear_resistance_factor = gd.RESISTANCE_FACTORS[channel.material]["shear"]
+    bending_resistance_factor = gd.RESISTANCE_FACTORS[channel.material]["bending"]
 
     # Filter out invalid members (non-existent in nodes dictionary)
     members = [m for m in members if m[0] in nodes and m[1] in nodes]
@@ -89,10 +94,10 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
         bending_stress = moment * c / I
 
         buckling_load = (np.pi**2 * E * I) / (K * L)**2
-        buckling_fail = axial < 0 and abs(axial) > resistance_factor * buckling_load
-        axial_fail = abs(axial_stress) > resistance_factor * Fy
-        shear_fail = abs(shear_stress) > resistance_factor * 0.6 * Fy
-        bending_fail = abs(bending_stress) > resistance_factor * Fy
+        buckling_fail = axial < 0 and abs(axial) > buckling_resistance_factor * buckling_load
+        axial_fail = abs(axial_stress) > axial_resistance_factor * Fy
+        shear_fail = abs(shear_stress) > shear_resistance_factor * 0.6 * Fy
+        bending_fail = abs(bending_stress) > bending_resistance_factor * Fy
 
         failed = axial_fail or shear_fail or bending_fail or buckling_fail
         if failed:
@@ -118,7 +123,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
             L = abs(xj - xi)
             M = q * L**2 / 8
             distributed_bending_stress = M * c / I
-            if abs(distributed_bending_stress) > resistance_factor * Fy:
+            if abs(distributed_bending_stress) > bending_resistance_factor * Fy:
                 failed_members.add((i, j))
                 if display:
                     print(f"Top edge member {i}-{j} fails due to distributed load bending moment.")

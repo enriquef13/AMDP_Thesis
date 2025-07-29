@@ -407,7 +407,7 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
 def generate_top_n_floors(n_top, plot=False):
     top_floors = []
     for gauge in [10, 12, 14, 16, 18]:
-        floors = fill_floor_with_panels(gauge, n_sols=20)
+        floors = fill_floor_with_panels(gauge, n_sols=50)
         top_floors.extend(floors)
 
     top_floors = sorted(top_floors, 

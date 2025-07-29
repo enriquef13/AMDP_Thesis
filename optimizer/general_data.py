@@ -17,8 +17,13 @@ SST = 'SST-M3'
 WALL = 'Wall'
 FLOOR = 'Floor'
 
-# Safety Factor (for yield strength in walls and floors)
-SF = 2
+# Load and Resistance Factors
+K = 1.2                             # Effective length factor (pinned-pinned)
+LOAD_FACTOR = 1.4                   # Load factor (LRFD)
+RESISTANCE_FACTOR = 0.9             # Resistance factor (LRFD)
+MAX_DEFLECTION_RATIO = 1/240        # Deflection limit (LRFD)
+WIND_RESISTANCE_FACTOR = 1.15       # Wind resistance factor (LRFD)
+YIELD_SF = 2                        # Safety Factor (ASD)
 
 MATERIALS = {
     SST: {"yield_strength": 35000, "elastic_mod": 28000000, "youngs_mod": 28000000}, # psi
@@ -52,6 +57,7 @@ WIND_TC = 'TC'  # Tropical Cyclone
 WIND_NTC = 'NTC'  # Non-Tropical Cyclone
 WIND_TCM = 'TCM'  # Tropical Cyclone Missile
 
+# Modify to become a config input
 WIND_PRESSURE_RATINGS = {
     WIND_NTC: 40,  # psf
     WIND_TC: 45,   # psf

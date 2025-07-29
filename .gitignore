@@ -40,6 +40,11 @@ Thumbs.db
 *.jpeg
 *.gif
 
+# Except basin_x isometric views
+!optimizer/basin_x.png
+!optimizer/basin_y.png
+!optimizer/basin_f.png
+
 # Project specific
 
 # Folders within the optimizer directory

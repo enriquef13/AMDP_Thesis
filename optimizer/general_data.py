@@ -17,13 +17,19 @@ SST = 'SST-M3'
 WALL = 'Wall'
 FLOOR = 'Floor'
 
-# Load and Resistance Factors
-K = 1.2                             # Effective length factor (pinned-pinned)
-LOAD_FACTOR = 1.4                   # Load factor (LRFD)
-RESISTANCE_FACTOR = 0.9             # Resistance factor (LRFD)
-MAX_DEFLECTION_RATIO = 1/240        # Deflection limit (LRFD)
-WIND_RESISTANCE_FACTOR = 1.15       # Wind resistance factor (LRFD)
-YIELD_SF = 2                        # Safety Factor (ASD)
+# Safety Factor (for yield strength in walls and floors)
+SF = 2
+
+RESISTANCE_FACTORS = {
+    SST: {"buckling": 0.85, "axial": 0.85, "shear": 0.95, "bending": 0.85},
+    GLV: {"buckling": 0.90, "axial": 0.85, "shear": 0.95, "bending": 0.85}
+}
+
+DEFLECTION_LIMIT = 1/240
+
+LOAD_FACTOR = 1.6
+
+EFFECTIVE_LENGTH_FACTOR = 1.2   
 
 MATERIALS = {
     SST: {"yield_strength": 35000, "elastic_mod": 28000000, "youngs_mod": 28000000}, # psi
@@ -53,16 +59,10 @@ GAMMA_WALL = {
     0.25: 0.159, 0.5: 0.275, 0.75: 0.354, 1.0: 0.413, 1.5: 0.482, 2.0: 0.509, 3.0: 0.517
 }
 
-WIND_TC = 'TC'  # Tropical Cyclone
-WIND_NTC = 'NTC'  # Non-Tropical Cyclone
-WIND_TCM = 'TCM'  # Tropical Cyclone Missile
-
-# Modify to become a config input
-WIND_PRESSURE_RATINGS = {
-    WIND_NTC: 40,  # psf
-    WIND_TC: 45,   # psf
-    WIND_TCM: 60   # psf
-}
+# Tropical Cyclone Missile (60 psf)
+# Non-Tropical Cyclone (40 psf)
+# Tropical Cyclone (45 psf)
+WIND_PRESSURE_RATING = 40  # psf
 
 from profiles import Profile
 FLOOR_BEAMS = Profile(material=GLV, gauge=12, profile_type='I')
@@ -73,14 +73,4 @@ WATER_COLLECTION_WELDED = 'Water Collection Welded'
 WATER_COLLECTION_TRIARMOR = 'Water Collection TriArmor'
 WATER_COLLECTION_UNWELDED = 'Water Collection Unwelded'
 WATER_DISTRIBUTION = 'Water Distribution'
-
-RESISTANCE_FACTORS = {
-    SST: {"buckling": 0.85, "axial": 0.85, "shear": 0.95, "bending": 0.85},
-    GLV: {"buckling": 0.90, "axial": 0.85, "shear": 0.95, "bending": 0.85}
-}
-
-DEFLECTION_LIMIT = 1/240
-
-LOAD_FACTOR = 1.6
-
-EFFECTIVE_LENGTH_FACTOR = 1.2        
+     

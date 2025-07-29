@@ -53,7 +53,7 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone=gd.WIND
     S_allow = props["yield_strength"] / gd.YIELD_SF  # psi (safety factor of 2.5)
 
     # Obtain wind pressure rating and convert to psi
-    wind_pressure_psi = (gd.WIND_PRESSURE_RATINGS[wind_zone] / 144) * gd.WIND_RESISTANCE_FACTOR
+    wind_pressure_psi = (gd.WIND_PRESSURE_RATING / 144) * gd.WIND_RESISTANCE_FACTOR
 
     # Hydrostatic pressure at bottom of wall (psi)
     gamma_water = 0.03603  # lbf/in³ (P = rho * g * h -> gamma = rho * g; rho = 62.4 lb/ft³, g = 32.2 ft/s²)

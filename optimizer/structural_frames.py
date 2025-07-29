@@ -5,8 +5,10 @@ import matplotlib.pyplot as plt # type: ignore
 import matplotlib.patches as patches # type: ignore
 from matplotlib.lines import Line2D # type: ignore
 import general_data as gd
+import config as cfg
+import os
 
-def calculate_wall_frame_structural(nodes, members, channel, q, display=False, plot=False, title=None, metrics=None):
+def calculate_wall_frame_structural(nodes, members, channel, q, display=False, plot=False, title=None, metrics=None, store_plot=False):
     """
     Calculate the structural properties of a wall based on its nodes and members.
     
@@ -24,8 +26,8 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
     I = channel.I  # Area moment of inertia (in^4)
     c = channel.c  # Distance from neutral axis to extreme fiber (in)
 
-    K = 1.0                             # Effective length factor (pinned-pinned)
-    load_factor = 1.25                  # Load factor (LRFD)
+    K = 1.2                             # Effective length factor (pinned-pinned)
+    load_factor = 1.5                   # Load factor (LRFD)
     resistance_factor = 0.9             # Resistance factor (LRFD)
     max_deflection_ratio = 1/240        # Deflection limit
 
@@ -146,18 +148,17 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
         if display:
             print(f"Member {i}-{j}: Max deflection = {max_deflection:.4f} in, Limit = {limit:.4f} in")
 
-    if display:
-        if deflected_members:
-            print(f"\nMembers exceeding L/{int(1/deflection_limit_ratio)}:")
-            for i, j in deflected_members:
-                print(f"Member {i}-{j}")
-        else:
-            print("\nAll deflections within limits.")
+            if deflected_members:
+                print(f"\nMembers exceeding L/{int(1/deflection_limit_ratio)}:")
+                for i, j in deflected_members:
+                    print(f"Member {i}-{j}")
+            else:
+                print("\nAll deflections within limits.")
 
-        df_results = pd.DataFrame(internal_results)
-        print(df_results.round(3))
+            df_results = pd.DataFrame(internal_results)
+            print(df_results.round(3))
 
-    if plot:
+    if store_plot or plot:
         fig, ax = plt.subplots(figsize=(8, 6))
 
         # Plot members
@@ -230,8 +231,15 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
         y_pad = 0.1 * (y_max_data - y_min_data) if y_max_data > y_min_data else 5
         ax.set_ylim(y_min_data - y_pad, y_max_data + y_pad)
 
-        ax.set_xlabel("X (in)")
-        ax.set_ylabel("Y (in)")
+        if "XW" in title:
+            ax.set_xlabel("Length (in)")
+            ax.set_ylabel("Height (in)")
+        elif "YW" in title:
+            ax.set_xlabel("Width (in)")
+            ax.set_ylabel("Height (in)")
+        else:
+            ax.set_xlabel("X (in)")
+            ax.set_ylabel("Y (in)")
         ax.grid(True)
         ax.set_ylim(y_min_data - 20, y_max_data + 20)
         
@@ -244,7 +252,13 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
 
         plt.subplots_adjust(top=0.75)  
 
-        plt.show()
+        if plot: plt.show()
+        if store_plot:
+            path = cfg.store_path
+            if not os.path.exists(path):
+                os.makedirs(path)
+            fig.savefig(f"{path}/{title}.png", bbox_inches='tight', dpi=300)
+            plt.close(fig)
 
 
     # Return structural soundness

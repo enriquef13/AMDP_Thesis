@@ -307,7 +307,7 @@ def generate_top_n_frames(n_top, xwall=True, plot=False):
 
     top_frames = []
 
-    wall_type = 'X Wall' if xwall else 'Y Wall'
+    wall_type = 'XW' if xwall else 'YW'
 
     for i, row in top_n.iterrows():
         frame_data = row['Frame Data']
@@ -317,19 +317,20 @@ def generate_top_n_frames(n_top, xwall=True, plot=False):
         metrics = frame_data[2]
         q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
 
-        if plot:
-            try:
-                calculate_wall_frame_structural(
-                    nodes,
-                    members,
-                    channel_type,
-                    q=q,
-                    display=False,
-                    plot=plot,
-                    title=f"{wall_type} Design {i+1}",
-                    metrics=metrics
-                )
-            except Exception as e:
-                print(f"  ❌ Error plotting design: {e}")
+        try:
+            calculate_wall_frame_structural(
+                nodes,
+                members,
+                channel_type,
+                q=q,
+                display=False,
+                plot=plot,
+                title=f"{wall_type}{i+1}",
+                metrics=metrics,
+                store_plot=True
+            )
+
+        except Exception as e:
+            print(f"  ❌ Error plotting design: {e}")
 
     return top_frames

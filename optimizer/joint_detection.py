@@ -86,13 +86,14 @@ def extract_wall_joints(frame, part_entries):
 def extract_floor_joints(floor, part_entries):
 
     joint_entries = []
-    channels, panels, cap = floor['channels'], floor['panels'], floor['cap']
+    channels, panels = floor['channels'], floor['panels']
 
-    channel_length = channels[0][1]
-    n_channels = part_entries[-1][2]
-    channel_name = part_entries[-1][1]
-    channel_type = gd.FLOOR_BEAMS.profile_type
- 
+    if len(channels) > 0:
+        channel_length = channels[0][1]
+        n_channels = part_entries[-1][2]
+        channel_name = part_entries[-1][1]
+        channel_type = gd.FLOOR_BEAMS.profile_type
+
     all_same = all(panels[0] == panel for panel in panels)
     n_panels = len(panels) if all_same else len(panels) // 2
     b_panel_length = part_entries[0][-3] 
@@ -123,13 +124,14 @@ def extract_floor_joints(floor, part_entries):
             joint_entries.append([panel1, panel2, joint_length])
 
     # Channel-to-Channel Joints
-    if gd.I_IS_DOUBLE_C:
-        for i in range(n_channels // 2):
-            joint_entries.append([f"{channel_name}:{i + 1}", f"{channel_name}:{i + 2}", channel_length])
+    if len(channels) > 0:
+        if gd.I_IS_DOUBLE_C:
+            for i in range(n_channels // 2):
+                joint_entries.append([f"{channel_name}:{i + 1}", f"{channel_name}:{i + 2}", channel_length])
 
-    # Panel-to-Channel Joints
-    for i in range(n_channels // 2):
-        joint_entries.append([f"{channel_name}:{i + 1}", f"{b_panel_name}:{1}", channel_length])
+        # Panel-to-Channel Joints
+        for i in range(n_channels // 2):
+            joint_entries.append([f"{channel_name}:{i + 1}", f"{b_panel_name}:{1}", channel_length])
 
     return joint_entries
 
@@ -148,6 +150,3 @@ def extract_floor_wall_joints(floor_entries, xwall_entries, ywall_entries):
         joint_entries.append([f"{xwall_panel}:{i + 1}", f"{ywall_panel}:{i + 1}", cfg.z_in])
 
     return joint_entries
-
-
-

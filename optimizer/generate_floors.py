@@ -8,6 +8,7 @@ import matplotlib.patches as patches # type: ignore
 from structural_panels import calculate_floor_gauge, calculate_wall_gauge
 import numpy as np # type: ignore
 import math
+import os
 
 def fill_floor_with_panels(gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, n_sols=1, display=False):
     """
@@ -263,7 +264,7 @@ def _get_panel_and_channel_weights(panels, channels):
     return panel_weights, channel_weights
 
 def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, floor_length=cfg.y_in, add_channels=True, 
-                           vertical=True, step_size=1, metrics=True):
+                           vertical=True, step_size=1, metrics=True, plot=False, store_plot=False):
     """
     Visualize the filled floor area with panels based on the backtracking algorithm's placement logic.
     Optionally, add evenly spaced channels (vertical or horizontal) within individual panels.
@@ -290,8 +291,8 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
     ax.set_xlim(0, floor_width)
     ax.set_ylim(0, floor_length)
     ax.set_aspect('equal', adjustable='box')
-    ax.set_xlabel("Width (inches)")
-    ax.set_ylabel("Length (inches)")
+    ax.set_xlabel("Length (in)")
+    ax.set_ylabel("Width (in)")
     
     current_x = 0
     current_y = 0
@@ -380,7 +381,13 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
 
     # Show the plot
     plt.grid(visible=True, which='both', linestyle='--', linewidth=0.5)
-    plt.show()
+    if plot: plt.show()
+    if store_plot:
+        path = cfg.store_path
+        if not os.path.exists(path):
+            os.makedirs(path)
+        fig.savefig(f"{path}/{title}.png", bbox_inches='tight', dpi=300)
+        plt.close(fig)
 
 def generate_top_n_floors(n_top, plot=False):
     top_floors = []
@@ -391,12 +398,10 @@ def generate_top_n_floors(n_top, plot=False):
     top_floors = sorted(top_floors, 
                         key=lambda x: sum(panel[2] for panel in x['panels']) + sum(channel[2] for channel in x['channels']))[:n_top] 
 
-    if plot:
-        n_top = len(top_floors) if n_top > len(top_floors) else n_top
-        print(f"Extracting top {n_top} floors in terms of weight.")
-        for i, floor in enumerate(top_floors, start=1):
-            visualize_filled_floor(floor, add_channels=True, vertical=True, design_name=f"Floor Design {i}")
-    
+    if plot: print(f"Extracting top {n_top} floors in terms of weight.")
+
+    n_top = len(top_floors) if n_top > len(top_floors) else n_top
+    for i, floor in enumerate(top_floors, start=1):
+        visualize_filled_floor(floor, add_channels=True, vertical=True, design_name=f"F{i}", plot=plot, store_plot=True)
+
     return top_floors
-
-

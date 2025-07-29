@@ -7,9 +7,9 @@ import config as cfg
 
 quit_excel()
 
-plot = False
 n_top = 15
 n_designs = 20
+plot = False
 xframes = generate_top_n_frames(n_designs, xwall=True, plot=plot)
 yframes = generate_top_n_frames(n_designs, xwall=False, plot=plot)
 floors = generate_top_n_floors(n_designs, plot=plot)

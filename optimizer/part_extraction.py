@@ -138,17 +138,18 @@ def get_floor_parts(floor, design_name):
                                  panel_material, panel_gauge, panel_bends, "Class 3")
         part_entries.append(panel_entry)
 
-    n_channels = len(channels) * 2 if gd.I_IS_DOUBLE_C else len(channels)
-    channel_length = channels[0][1]
-    channel_gauge = gd.FLOOR_BEAMS.gauge
-    channel_material = gd.FLOOR_BEAMS.material
-    channel_width = gd.FLOOR_BEAMS.width if not gd.I_IS_DOUBLE_C else 9.6875  # Width for double C profile
-    channel_bends = gd.FLOOR_BEAMS.unique_bends
+    if len(channels) > 0:
+        n_channels = len(channels) * 2 if gd.I_IS_DOUBLE_C else len(channels)
+        channel_length = channels[0][1]
+        channel_gauge = gd.FLOOR_BEAMS.gauge
+        channel_material = gd.FLOOR_BEAMS.material
+        channel_width = gd.FLOOR_BEAMS.width if not gd.I_IS_DOUBLE_C else 9.6875  # Width for double C profile
+        channel_bends = gd.FLOOR_BEAMS.unique_bends
 
-    channel_entry = _get_entry(design_name, f"F_Channel_{design_name}", channel_width, channel_length,
-                                n_channels, gd.CUT_TL, gd.FORM_RF,
-                                channel_material, channel_gauge, channel_bends, "Class 3")
-    part_entries.append(channel_entry)
+        channel_entry = _get_entry(design_name, f"F_Channel_{design_name}", channel_width, channel_length,
+                                    n_channels, gd.CUT_TL, gd.FORM_RF,
+                                    channel_material, channel_gauge, channel_bends, "Class 3")
+        part_entries.append(channel_entry)
 
     return part_entries
 

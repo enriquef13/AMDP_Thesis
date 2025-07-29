@@ -34,5 +34,15 @@ env/
 .DS_Store
 Thumbs.db
 
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+
 # Project specific
-# Add any project-specific files or directories to ignore
+
+# Folders within the optimizer directory
+optimizer/__pycache__/
+optimizer/*.pyc
+optimizer/temp_plots/

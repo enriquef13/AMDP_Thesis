@@ -37,14 +37,13 @@ def _interpolate_key(a_b, dictionary):
         # Linear interpolation
         return lower_value + (upper_value - lower_value) * ((a_b - lower_key) / (upper_key - lower_key))
 
-def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone=gd.WIND_NTC, material=gd.SST, display=False):
+def calculate_wall_gauge(width_in, height_in, water_height_in, material=gd.SST, display=False):
     """
     Calculate required sheet thickness for a wall.
 
     width_in: Width of the wall (inches).
     height_in: Height of the wall (inches).
     water_height_in: Height of water inside (inches).
-    wind_zone: NTC (Non-Tropical Cyclone), TC (Tropical Cyclone), or TCM (Tropical Cyclone Missile) for wind pressure rating.
     material: "SST-M3" or "GLV-M5".
     """
 
@@ -61,7 +60,7 @@ def calculate_wall_gauge(width_in, height_in, water_height_in, wind_zone=gd.WIND
 
     if display:
         print(f"Water pressure: {water_pressure_psi:.3f} psi for water height {water_height_in}\"")
-        print(f"Wind pressure: {wind_pressure_psi:.3f} psi for wind zone {wind_zone}")
+        print(f"Wind pressure: {wind_pressure_psi:.3f} psi")
 
     # Total pressure on wall
     total_pressure_psi = max(water_pressure_psi, wind_pressure_psi)
@@ -158,7 +157,6 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material=gd.SST,
 #     width_in=13,              
 #     height_in=z_in,             
 #     water_height_in=10,       
-#     wind_zone=WIND_NTC,
 #     material=SST,
 #     display=display
 # )

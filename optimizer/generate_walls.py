@@ -79,7 +79,7 @@ def generate_frame(x, z, channel_type, panel_material, num_nodes=12, display=Fal
     else:
         raise ValueError(f"Unknown diagonal plan '{diagonal_plan}'")
 
-    _, wall_gauge = calculate_wall_gauge(panel_width, panel_height, cfg.water_height_in, wind_zone=cfg.wind_zone, material=panel_material)
+    _, wall_gauge = calculate_wall_gauge(panel_width, panel_height, cfg.water_height_in, material=panel_material)
     if wall_gauge < 10 or wall_gauge is None:
         raise ValueError("Calculated wall gauge is too thick.")
     cap = Capabilities(cfg.material, wall_gauge)

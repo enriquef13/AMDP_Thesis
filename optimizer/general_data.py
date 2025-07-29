@@ -24,7 +24,8 @@ RESISTANCE_FACTORS = {
 
 DEFLECTION_LIMIT = 1/240
 LOAD_FACTOR = 1.6
-EFFECTIVE_LENGTH_FACTOR = 1.2      
+EFFECTIVE_LENGTH_FACTOR = 1.2
+WIND_PRESSURE_RATING = 40  # psf      
 WIND_RESISTANCE_FACTOR = 1.15       
 YIELD_SF = 2                        
 
@@ -55,11 +56,6 @@ BETA_WALL = {
 GAMMA_WALL = {
     0.25: 0.159, 0.5: 0.275, 0.75: 0.354, 1.0: 0.413, 1.5: 0.482, 2.0: 0.509, 3.0: 0.517
 }
-
-# Tropical Cyclone Missile (60 psf)
-# Non-Tropical Cyclone (40 psf)
-# Tropical Cyclone (45 psf)
-WIND_PRESSURE_RATING = 40  # psf
 
 from profiles import Profile
 FLOOR_BEAMS = Profile(material=GLV, gauge=12, profile_type='I')

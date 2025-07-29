@@ -92,7 +92,7 @@ def get_top_part_and_joint_entries(top_designs, final_part_entries, final_joint_
         updated = []
         for entry in entries:
             for design_name in top_design_names:
-                if entry[0] in design_name:
+                if entry[0] in design_name.split('_'):
                     new_entry = entry.copy()
                     new_entry[0] = design_name
                     # Replace after last "_" in entry[1] with design_name
@@ -125,7 +125,7 @@ def get_top_part_and_joint_entries(top_designs, final_part_entries, final_joint_
             for design_name in top_design_names:
                 partA = entry[0]
                 partB = entry[1]
-                if extract_part_base(partA) in design_name and extract_part_base(partB) in design_name:
+                if extract_part_base(partA) in design_name.split('_') and extract_part_base(partB) in design_name.split('_'):
                     new_entry = entry.copy()
                     new_entry[0] = replace_part_name_with_design(partA, design_name)
                     new_entry[1] = replace_part_name_with_design(partB, design_name)
@@ -143,10 +143,8 @@ def get_top_part_and_joint_entries(top_designs, final_part_entries, final_joint_
         part_set = entry[0]
         part_set_groups[part_set].append(entry)
 
-
     # Now, for each part_set, call your function with the entire slice (list of entries for that part_set)
     def process_part_set(part_set_entries):
-        # Replace this with your actual function logic
         floor_entries = [entry for entry in part_set_entries if entry[1].startswith("F")]
         wall_entries = [entry for entry in part_set_entries if entry[1].startswith("W")]
         floor_wall_joints = extract_floor_wall_joints(floor_entries, wall_entries, wall_entries)

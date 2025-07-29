@@ -52,6 +52,7 @@ WIND_TC = 'TC'  # Tropical Cyclone
 WIND_NTC = 'NTC'  # Non-Tropical Cyclone
 WIND_TCM = 'TCM'  # Tropical Cyclone Missile
 
+# Modify to become a config input
 WIND_PRESSURE_RATINGS = {
     WIND_NTC: 40,  # psf
     WIND_TC: 45,   # psf

@@ -205,9 +205,9 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
             fig.text(0.5, 0.87, panel_info, fontsize=14, ha='center', va='top', color='blue')
             # Use separate fig.text for colored ratios
             fig.text(0.45, 0.83, f"{usage_info}   Mass Ratio: ", fontsize=14, ha='center', va='top', color='black')
-            fig.text(0.66, 0.83, f"{member_ratio}%", fontsize=14, ha='left', va='top', color='red')
-            fig.text(0.71, 0.83, " | ", fontsize=14, ha='left', va='top', color='black')
-            fig.text(0.73, 0.83, f"{panel_ratio}%", fontsize=14, ha='left', va='top', color='blue')
+            fig.text(0.62, 0.83, f"{member_ratio}%", fontsize=14, ha='left', va='top', color='red')
+            fig.text(0.67, 0.83, " | ", fontsize=14, ha='left', va='top', color='black')
+            fig.text(0.69, 0.83, f"{panel_ratio}%", fontsize=14, ha='left', va='top', color='blue')
 
         # Add panel rectangles and dotted boundaries
         if metrics:
@@ -263,7 +263,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
             if os.path.exists(image_path):
                 img = plt.imread(image_path)
                 imagebox = OffsetImage(img, zoom=0.05)  # Adjust zoom to control image size
-                ab = AnnotationBbox(imagebox, (1.02, 1.15), xycoords='axes fraction', frameon=False)
+                ab = AnnotationBbox(imagebox, (1, 1.15), xycoords='axes fraction', frameon=False)
                 ax.add_artist(ab)
 
         if plot: plt.show()

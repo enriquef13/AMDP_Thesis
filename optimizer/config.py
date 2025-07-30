@@ -3,15 +3,15 @@ import general_data as gd
 # Example of HXV3 basin (22 ft x 14 ft x 27 in)
 submodule_type = gd.WATER_COLLECTION_WELDED       # Type of submodule
 material = gd.SST                                 # Material type (gd.SST or gd.GLV)
-x_in = 310                                        # Longer dimension in inches
-y_in = 160                                        # Shorter dimension in inches
-z_in = 27                                         # Basin height in inches (min 26 inches, max 50 inches)
+x_in = 235                                        # Longer dimension in inches
+y_in = 135                                        # Shorter dimension in inches
+z_in = 26                                         # Basin height in inches (min 26 inches, max 50 inches)
 water_height_in = 15                              # Water height in inches
-top_load = 40000                                  # Uniform load on top edges (lbf)
-cost_calc_path = 'cost_calc/cost_calculator.xlsx' # Path to the Cost Calculator Excel file
-store_path = 'designs_results/'                   # Path to store generated plots
+top_load = 20000                                  # Uniform load on top edges (lbf)
+cost_calc_path = 'cost_calculator.xlsx' # Path to the Cost Calculator Excel file
+store_path = 'S1500/'                   # Path to store generated plots
 n_top_final_designs = 15                          # Number of top designs to consider
-n_configurations = 1                              # Number of design configurations used to generate the top designs
+n_configurations = 25                              # Number of design configurations used to generate the top designs
 
 # # Dimensions for GAC CWB
 # x_in = 235

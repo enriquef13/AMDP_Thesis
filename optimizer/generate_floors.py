@@ -291,7 +291,6 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
     # Draw the floor boundary
     ax.set_xlim(0, floor_width)
     ax.set_ylim(0, floor_length)
-    ax.set_aspect('equal', adjustable='box')
     ax.set_xlabel("Length (in)")
     ax.set_ylabel("Width (in)")
     
@@ -371,7 +370,7 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
             f"Total Mass: {total_mass:.1f} lb"
         )
         # Add colored ratio text with adjusted positions to avoid overlap
-        text_y = 0.80
+        text_y = 0.82
         fig.text(0.5, text_y + 0.08, channel_info, fontsize=14, ha='center', va='top', color='red')
         fig.text(0.5, text_y + 0.04, panel_info, fontsize=14, ha='center', va='top', color='blue')
         # Use separate fig.text for colored ratios
@@ -381,7 +380,7 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
         fig.text(0.70, text_y, f"{panel_ratio}%", fontsize=14, ha='left', va='top', color='blue')
 
         if two_row: 
-            fig.text(0.76, 0.04, f"* Panels should be staggered\n   as shown in isometric view.", fontsize=8.5, ha='left', va='top', color='black')
+            fig.text(0.79, 0.04, f"* Panels should be staggered\n   as shown in isometric view.", fontsize=8.5, ha='left', va='top', color='black')
 
         plt.subplots_adjust(top=0.75)  # Adjust top margin to fit the text
 
@@ -392,7 +391,7 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
         if os.path.exists(image_path):
             img = plt.imread(image_path)
             imagebox = OffsetImage(img, zoom=0.05)  # Adjust zoom to control image size
-            ab = AnnotationBbox(imagebox, (0.97, 1.19), xycoords='axes fraction', frameon=False)
+            ab = AnnotationBbox(imagebox, (0.97, 1.2), xycoords='axes fraction', frameon=False)
             ax.add_artist(ab)
 
     if plot: plt.show()

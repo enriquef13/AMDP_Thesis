@@ -30,8 +30,8 @@ RESISTANCE_FACTORS = {
 
 DEFLECTION_LIMIT = 1/240
 LOAD_FACTOR = 1.6                   # 1.4 - Aggressive
-EFFECTIVE_LENGTH_FACTOR = 1         # 1.2 - Aggressive
-WIND_PRESSURE_RATING = 40  # psf      
+EFFECTIVE_LENGTH_FACTOR = 1.2       # 1   - Aggressive
+WIND_PRESSURE_RATING = 40           # psf      
 WIND_RESISTANCE_FACTOR = 1.15       
 YIELD_SF = 2                        # 1.5 - Aggressive                      
 

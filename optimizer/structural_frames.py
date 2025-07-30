@@ -165,7 +165,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
             print(df_results.round(3))
 
     if store_plot or plot:
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots(figsize=(10, 6))
 
         # Plot members
         for i, j in members:
@@ -263,7 +263,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
             if os.path.exists(image_path):
                 img = plt.imread(image_path)
                 imagebox = OffsetImage(img, zoom=0.05)  # Adjust zoom to control image size
-                ab = AnnotationBbox(imagebox, (1.10, 1.15), xycoords='axes fraction', frameon=False)
+                ab = AnnotationBbox(imagebox, (1.02, 1.15), xycoords='axes fraction', frameon=False)
                 ax.add_artist(ab)
 
         if plot: plt.show()

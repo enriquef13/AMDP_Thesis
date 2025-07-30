@@ -69,7 +69,7 @@ class Capabilities:
         self.max_sheet_width = 60
 
         self.APB_max_flange_length = 8
-        self.APB_min_flange_length = self.thickness[self.gauge_material] * 5
+        self.APB_min_flange_length = self.thickness * 5
         self.APB_min_throat_length = 15.75
         self.APB_max_flat_diagonal = 157.48
         self.APB_max_mass = 286.6

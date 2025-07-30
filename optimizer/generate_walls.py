@@ -127,7 +127,8 @@ def generate_frame(x, z, channel_type, panel_material, num_nodes=12, display=Fal
             "weighted_total_mass": weighted_total_mass,
             "panel_material": panel_material,
             "channel_data": channel_type,
-            "wall_type": wall_type 
+            "wall_type": wall_type,
+            "cap": cap
         }
     ]
 

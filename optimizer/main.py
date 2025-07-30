@@ -13,6 +13,8 @@ xframes = generate_top_n_frames(n_configs, xwall=True)
 yframes = generate_top_n_frames(n_configs, xwall=False)
 floors = generate_top_n_floors(n_configs)
 
+# raise ValueError("No frames generated. Check the configuration or input parameters.")
+
 xwall_part_entries, xwall_joint_entries = get_part_and_joint_entries(xframes, design_name='XW')
 ywall_part_entries, ywall_joint_entries = get_part_and_joint_entries(yframes, design_name='YW')
 floor_part_entries, floor_joint_entries = get_part_and_joint_entries(floors, design_name='F')

@@ -399,6 +399,7 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
 
     if store_plot:
         path = cfg.store_path
+        if path[-1] != '/': path += '/'
         if not os.path.exists(path):
             os.makedirs(path)
         fig.savefig(f"{path}/{title}.png", bbox_inches='tight', dpi=300)

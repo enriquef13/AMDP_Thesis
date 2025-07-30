@@ -270,6 +270,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
 
         if store_plot:        
             path = cfg.store_path
+            if path[-1] != '/': path += '/'
             if not os.path.exists(path):
                 os.makedirs(path)
             fig.savefig(f"{path}/{title}.png", bbox_inches='tight', dpi=300)

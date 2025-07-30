@@ -9,6 +9,6 @@ z_in = 27                                         # Basin height in inches (min 
 water_height_in = 15                              # Water height in inches
 top_load = 20000                                  # Uniform load on top edges (lbf)
 cost_calc_path = 'cost_calc/cost_calculator.xlsx' # Path to the Cost Calculator Excel file
-store_path = 's15_cons/'                              # Path to store generated plots
+store_path = 's15_cons/'                          # Path to store generated plots
 n_top_final_designs = 15                          # Number of top designs to consider (max 35)
 n_configurations = 25                             # Number of design configurations, per wall and floor, used to generate the top designs (max 35) 

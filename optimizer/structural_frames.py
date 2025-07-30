@@ -263,7 +263,7 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
             if os.path.exists(image_path):
                 img = plt.imread(image_path)
                 imagebox = OffsetImage(img, zoom=0.05)  # Adjust zoom to control image size
-                ab = AnnotationBbox(imagebox, (1.05, 1.15), xycoords='axes fraction', frameon=False)
+                ab = AnnotationBbox(imagebox, (1.10, 1.15), xycoords='axes fraction', frameon=False)
                 ax.add_artist(ab)
 
         if plot: plt.show()

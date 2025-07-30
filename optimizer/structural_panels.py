@@ -151,22 +151,3 @@ def calculate_floor_gauge(width_in, length_in, water_height_in, material=gd.SST,
         print(f"Recommended thickness: {t_closest_in:.3f}\" ({gauge_dict[t_closest_in]} gauge {material})")
 
     return t_required_in, gauge_dict[t_closest_in]
-
-# display = True
-# calculate_wall_gauge(
-#     width_in=13,              
-#     height_in=z_in,             
-#     water_height_in=10,       
-#     material=SST,
-#     display=display
-# )
-
-# print(" ")
-
-# calculate_floor_gauge(
-#     width_in=107,              
-#     length_in=14,            
-#     water_height_in=13,     
-#     material=SST,
-#     display=True
-# )

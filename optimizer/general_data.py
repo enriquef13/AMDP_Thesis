@@ -17,17 +17,23 @@ SST = 'SST-M3'
 WALL = 'Wall'
 FLOOR = 'Floor'
 
+# Submodule Types
+WATER_COLLECTION_WELDED = 'Water Collection Welded'
+WATER_COLLECTION_TRIARMOR = 'Water Collection TriArmor'
+WATER_COLLECTION_UNWELDED = 'Water Collection Unwelded'
+WATER_DISTRIBUTION = 'Water Distribution'
+
 RESISTANCE_FACTORS = {
     SST: {"buckling": 0.85, "axial": 0.85, "shear": 0.95, "bending": 0.85},
     GLV: {"buckling": 0.90, "axial": 0.85, "shear": 0.95, "bending": 0.85}
 }
 
 DEFLECTION_LIMIT = 1/240
-LOAD_FACTOR = 1.6
-EFFECTIVE_LENGTH_FACTOR = 1.2
+LOAD_FACTOR = 1.6                   # 1.4 - Aggressive
+EFFECTIVE_LENGTH_FACTOR = 1         # 1.2 - Aggressive
 WIND_PRESSURE_RATING = 40  # psf      
 WIND_RESISTANCE_FACTOR = 1.15       
-YIELD_SF = 2                        
+YIELD_SF = 2                        # 1.5 - Aggressive                      
 
 MATERIALS = {
     SST: {"yield_strength": 35000, "elastic_mod": 28000000, "youngs_mod": 28000000}, # psi
@@ -59,9 +65,4 @@ GAMMA_WALL = {
 
 from profiles import Profile
 FLOOR_BEAMS = Profile(material=GLV, gauge=12, profile_type='I')
-I_IS_DOUBLE_C = True
-
-WATER_COLLECTION_WELDED = 'Water Collection Welded'
-WATER_COLLECTION_TRIARMOR = 'Water Collection TriArmor'
-WATER_COLLECTION_UNWELDED = 'Water Collection Unwelded'
-WATER_DISTRIBUTION = 'Water Distribution'
+I_IS_DOUBLE_C = False

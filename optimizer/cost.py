@@ -5,7 +5,7 @@ import general_data as gd
 def quit_excel():
     for app in xw.apps: app.quit()
 
-def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_type='Water Collection Welded', part_start_row=4, joint_start_row=4, summary_row=2):
+def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_type=gd.WATER_COLLECTION_WELDED, part_start_row=4, joint_start_row=4, summary_row=2):
     """
     Update specific cells in an existing Excel file and read calculated values.
     

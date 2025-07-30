@@ -334,30 +334,3 @@ def check_nodes(x, z, nodes):
             print(f"Node {node} out of bounds: {0 <= node[0] <= x} and {0 <= node[1] <= z}")
             check = False
     return check
-
-# Example usage:
-
-# Nodes (index: [x or y, z]) 
-# corner_nodes = [0, cfg.z_in], [cfg.x_in, cfg.z_in]
-# nodes_x = {
-#     0: [0, 0],
-#     1: [25, 0],
-#     2: [53, 0],
-#     3: corner_nodes[0],
-#     4: [cfg.x_in//2, 20],
-#     5: corner_nodes[1]
-# }
-
-# c_channel = Profile(material=gd.SST, gauge=8, profile_type="C")
-
-# # Members 
-# members_x = [
-#     [0, 1], [1, 2],                 # bottom
-#     [3, 4], [4, 5],                 # top
-#     [0, 3], [1, 4], [2, 5],         # verticals
-#     [0, 4], [1, 3], [1, 5], [2, 4]  # diagonals
-# ]
-
-# q = distribute_load(cfg.x_in, cfg.y_in, cfg.top_load)
-# if check_nodes(cfg.x_in, cfg.z_in, nodes_x):
-#     calculate_wall_frame_structural(nodes_x, members_x, c_channel, q=q, display=True)

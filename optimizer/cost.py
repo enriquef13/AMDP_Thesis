@@ -5,7 +5,7 @@ import general_data as gd
 def quit_excel():
     for app in xw.apps: app.quit()
 
-def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_type='Water Collection Welded', part_start_row=4, joint_start_row=4, summary_row=2):
+def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_type=gd.WATER_COLLECTION_WELDED, part_start_row=4, joint_start_row=4, summary_row=2):
     """
     Update specific cells in an existing Excel file and read calculated values.
     
@@ -114,19 +114,3 @@ def _force_recalculation(filepath):
         app.quit()
     except Exception as e:
         print(f"Error forcing recalculation: {e}")
-
-# Example usage:
-# part_entries = [
-#     ['Set1', 'ID1', 10, gd.CUT_TL, gd.FORM_RF, gd.GLV, 10, 5, 120.5, 3, 0, 50.0, 20.0, 'Class 1'],
-#     ['Set1', 'ID2', 20, gd.CUT_MSP, gd.FORM_APB, gd.GLV, 14, 8, 200.0, 5, 4, 80.0, 30.0, 'Class 1']
-# ]
-
-# joint_entries = [['ID1:1', 'ID2:1', 15]]
-
-# calculated_values = update_and_read_excel(
-#     filepath='cost_calculator.xlsx',
-#     part_entries=part_entries,
-#     joint_entries=joint_entries
-# )
-
-# print("Calculated Values:", calculated_values)

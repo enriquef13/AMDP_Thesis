@@ -1,4 +1,3 @@
-
 from generate_walls import generate_top_n_frames
 from generate_floors import generate_top_n_floors
 from cost import update_and_read_excel, quit_excel, check_cost_calc_path

@@ -279,6 +279,14 @@ def generate_top_n_frames(n_top, xwall=True, plot=False):
                 continue
 
             metrics = frame[2]
+            if cfg.use_ratio:
+                TL_mass, APB_mass = metrics["total_member_mass"], metrics["total_panel_mass"]
+                APB_ratio = APB_mass / (TL_mass + APB_mass)
+                if APB_ratio < cfg.APB_ratio - cfg.ratio_variance or APB_ratio > cfg.APB_ratio + cfg.ratio_variance:
+                    print(f"  ❌ APB ratio {APB_ratio:.2f} out of bounds ({cfg.APB_ratio - cfg.ratio_variance:.2f}, {cfg.APB_ratio + cfg.ratio_variance:.2f})")
+                    continue
+                print(f"  ✅ APB ratio {APB_ratio:.2f} within bounds")
+
             results.append({
                 "Channel Material": ch_mat,
                 "Panel Material": pnl_mat,
@@ -301,7 +309,7 @@ def generate_top_n_frames(n_top, xwall=True, plot=False):
     df_results = pd.DataFrame(results)
     df_sorted = df_results.sort_values(by="Total Mass").reset_index(drop=True)
 
-    print(f"\n✅ {len(df_sorted)} structurally sound designs found out of {total_combos} combinations.")
+    print(f"{len(df_sorted)} structurally sound designs found out of {total_combos} combinations.")
 
     n = n_top
     top_n = df_sorted.head(n)
@@ -334,4 +342,5 @@ def generate_top_n_frames(n_top, xwall=True, plot=False):
         except Exception as e:
             print(f"  ❌ Error plotting design: {e}")
 
+    print(f"✅ Top {len(top_frames)} {wall_type}all designs generated and saved as images.")
     return top_frames

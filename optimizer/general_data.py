@@ -29,11 +29,11 @@ RESISTANCE_FACTORS = {
 }
 
 DEFLECTION_LIMIT = 1/240
-LOAD_FACTOR = 1.4                   # 1.6 - Conservative, 1.4 - Aggressive
-EFFECTIVE_LENGTH_FACTOR = 1.0       # 1.2 - Conservative, 1.0 - Aggressive
+LOAD_FACTOR = 1.6                   # 1.6 - Conservative, 1.4 - Aggressive
+EFFECTIVE_LENGTH_FACTOR = 1.2       # 1.2 - Conservative, 1.0 - Aggressive
 WIND_PRESSURE_RATING = 40           # psf      
 WIND_RESISTANCE_FACTOR = 1.15       
-YIELD_SF = 1.5                      # 2.0 - Conservative, 1.5 - Aggressive                      
+YIELD_SF = 2.0                      # 2.0 - Conservative, 1.5 - Aggressive                      
 
 MATERIALS = {
     SST: {"yield_strength": 35000, "elastic_mod": 28000000, "youngs_mod": 28000000}, # psi

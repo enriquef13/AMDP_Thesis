@@ -1,11 +1,11 @@
-
 from generate_walls import generate_top_n_frames
 from generate_floors import generate_top_n_floors
-from cost import update_and_read_excel, quit_excel
+from cost import update_and_read_excel, quit_excel, check_cost_calc_path
 from helpers import entries_to_list, get_part_and_joint_entries, get_design_summary_df, get_top_n_designs, get_top_part_and_joint_entries
 import config as cfg
 
 quit_excel()
+check_cost_calc_path()
 
 n_top = cfg.n_top_final_designs
 n_configs = cfg.n_configurations
@@ -13,7 +13,7 @@ xframes = generate_top_n_frames(n_configs, xwall=True)
 yframes = generate_top_n_frames(n_configs, xwall=False)
 floors = generate_top_n_floors(n_configs)
 
-# raise ValueError("No frames generated. Check the configuration or input parameters.")
+# raise ValueError("Interruption to test plots")
 
 xwall_part_entries, xwall_joint_entries = get_part_and_joint_entries(xframes, design_name='XW')
 ywall_part_entries, ywall_joint_entries = get_part_and_joint_entries(yframes, design_name='YW')

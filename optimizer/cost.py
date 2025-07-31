@@ -1,9 +1,15 @@
 from openpyxl import load_workbook # type: ignore
 import xlwings as xw # type: ignore
 import general_data as gd
+import config as cfg
+import os
 
 def quit_excel():
     for app in xw.apps: app.quit()
+
+def check_cost_calc_path():
+    if not os.path.exists(cfg.cost_calc_path):
+        raise FileNotFoundError(f"Cost calculator file not found at {cfg.cost_calc_path}")
 
 def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_type=gd.WATER_COLLECTION_WELDED, part_start_row=4, joint_start_row=4, summary_row=2):
     """

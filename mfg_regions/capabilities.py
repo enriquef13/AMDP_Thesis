@@ -73,7 +73,7 @@ class Capabilities:
         self.APB_min_throat_length = 15.75
         self.APB_max_flat_diagonal = 157.48
         self.APB_max_mass = 286.6
-        self.APB_min_width = self.APB_min_length = self.APB_min_throat_length + 2 * (self.APB_max_flange_length * 5/8)
+        self.APB_min_width = self.APB_min_length = self.APB_min_throat_length + 2 * (self.APB_max_flange_length * 4/8)
         self.APB_max_width = self.APB_max_length = self.max_flange_width[self.gauge_material]
 
         self.MPB_max_dim = 168
@@ -81,7 +81,7 @@ class Capabilities:
         self.TL_max_length = 334.65
         self.TL_max_diagonal_width = 7.87
         self.TL_max_mass_per_length = 7.348
-        self.TL_max_width = 13 # Min constraint (conservative - assuming two 3" flanges)
+        self.TL_max_width = 12 # Conservative constraint (based on selected avg of available profile shapes)
         # self.TL_max_width = round(4*((self.TL_max_diagonal_width**2 / 2) ** 0.5), 2) # Max constraint (based on diagonal width with 4 flanges)
 
     def _get_constraints(self, min, max, n_points):

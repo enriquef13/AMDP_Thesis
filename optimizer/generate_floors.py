@@ -39,20 +39,20 @@ def fill_floor_with_panels(gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, n
 
     bottom_length = bottom_space if top_space >= y_min or top_space <= 0 else bottom_space - (y_min - top_space)
     bottom_width = floor_width / n_bottom_panels
-    panel_weight = bottom_width * bottom_length * cap.density[cap.gauge_material]    
+    b_panel_weight = bottom_width * bottom_length * cap.density[cap.gauge_material]    
 
     for _ in range(n_bottom_panels):
-        panels.append((bottom_width, bottom_length, panel_weight))
+        panels.append((bottom_width, bottom_length, b_panel_weight))
 
     if top_space > 0:
         top_space = floor_length - bottom_length
         n_top_panels = math.ceil(floor_width / x_max)
         top_length = top_space if top_space >= y_min and top_space <= y_max else y_max
         top_width = floor_width / n_top_panels
-        panel_weight = top_width * top_length * cap.density[cap.gauge_material]
+        t_panel_weight = top_width * top_length * cap.density[cap.gauge_material]
 
         for _ in range(n_top_panels):
-            panels.append((top_width, top_length, panel_weight))
+            panels.append((top_width, top_length, t_panel_weight))
 
     # Store the initial panel setup
     panel_setups.append(panels)
@@ -82,8 +82,22 @@ def fill_floor_with_panels(gauge, floor_width=cfg.x_in, floor_length=cfg.y_in, n
         panel_setups.append(panels)
 
     top_solutions = []
+    print(f"  Found {len(panel_setups)} floor configurations for gauge {cap.gauge}.")
     for panels in panel_setups:
         channels = _obtain_channels(panels=panels, gauge=cap.gauge, vertical=True)
+        if cfg.use_ratio:
+            panel_weight = 0
+            for panel in panels:
+                panel_weight += panel[-1]
+            channel_weight = 0
+            for channel in channels:
+                channel_weight += channel[-1]
+            APB_ratio = panel_weight / (channel_weight + panel_weight) if channel_weight > 0 else 1
+            if APB_ratio < cfg.APB_ratio - cfg.ratio_variance or APB_ratio > cfg.APB_ratio + cfg.ratio_variance:
+                print(f"  ❌ APB ratio {APB_ratio:.2f} out of bounds ({cfg.APB_ratio - cfg.ratio_variance:.2f}, {cfg.APB_ratio + cfg.ratio_variance:.2f})")
+                continue
+            print(f"  ✅ APB ratio {APB_ratio:.2f} within bounds")
+
         top_solutions.append({
             'panels': panels,
             'channels': channels,
@@ -406,6 +420,7 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
 
 def generate_top_n_floors(n_top, plot=False):
     top_floors = []
+    print(f"\nAttempting to generate {cfg.n_configurations} structurally sound floor configurations...")
     for gauge in [10, 12, 14, 16, 18]:
         floors = fill_floor_with_panels(gauge, n_sols=50)
         top_floors.extend(floors)
@@ -413,10 +428,9 @@ def generate_top_n_floors(n_top, plot=False):
     top_floors = sorted(top_floors, 
                         key=lambda x: sum(panel[2] for panel in x['panels']) + sum(channel[2] for channel in x['channels']))[:n_top] 
 
-    if plot: print(f"Extracting top {n_top} floors in terms of weight.")
-
     n_top = len(top_floors) if n_top > len(top_floors) else n_top
     for i, floor in enumerate(top_floors, start=1):
         visualize_filled_floor(floor, add_channels=True, vertical=True, design_name=f"F{i}", plot=plot, store_plot=True)
 
+    print(f"✅ Top {n_top} floor designs generated and saved as images.\n")
     return top_floors

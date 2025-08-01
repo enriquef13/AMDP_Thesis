@@ -457,7 +457,7 @@ class Capabilities:
 
         # Plot all heatmaps with the same scale and axes
         for region, arr in self.all_costs.items():
-            plt.figure(figsize=(9, 7))
+            plt.figure(figsize=(7, 5))
             masked_arr = np.ma.masked_invalid(arr)
             plt.imshow(masked_arr, origin='lower', extent=[0, 340, 0, 340], aspect='auto',
                     cmap=cmap, vmin=fixed_vmin, vmax=fixed_vmax)
@@ -606,8 +606,8 @@ class Capabilities:
         cmap = LinearSegmentedColormap.from_list('light_grey_to_black', colors, N=n_bins)
 
         # Create the combined plot
-        plt.figure(figsize=(9, 7))
-        
+        plt.figure(figsize=(7, 5))
+
         # Plot the cost heatmap
         masked_arr = np.ma.masked_invalid(optimal_costs)
         plt.imshow(masked_arr, origin='lower', extent=[0, 340, 0, 340], aspect='auto',
@@ -642,7 +642,7 @@ class Capabilities:
         plt.xlabel('Width (in)')
         plt.ylabel('Length (in)')
         plt.suptitle(f'Optimal Manufacturing Regions\nGauge: {self.gauge}, Material: {self.material}', 
-                    fontsize=14, fontweight='bold', color='black', y=0.95)
+                    fontsize=14, fontweight='bold', color='black', y=0.975)
         plt.xlim(0, 340)
         plt.ylim(0, 340)
         plt.show()
@@ -819,7 +819,7 @@ class Capabilities:
             diff_vmin, diff_vmax = 0, 1
 
         # Create the plot
-        plt.figure(figsize=(9, 7))
+        plt.figure(figsize=(7, 5))
         
         # Plot the cost difference heatmap (only for multi-process regions)
         masked_differences = np.ma.masked_where(~multi_process_mask, cost_differences)
@@ -855,7 +855,7 @@ class Capabilities:
         plt.xlabel('Width (in)')
         plt.ylabel('Length (in)')
         plt.suptitle(f'Cost Comparison of Shared Manufacturing Regions\nGauge: {self.gauge}, Material: {self.material}', 
-                    fontsize=14, fontweight='bold', color='black', y=0.95)
+                    fontsize=14, fontweight='bold', color='black', y=0.975)
         plt.xlim(0, 340)
         plt.ylim(0, 340)
         

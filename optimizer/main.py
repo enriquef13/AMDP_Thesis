@@ -34,7 +34,7 @@ design_summary_df = get_design_summary_df(values)
 top_n_designs = get_top_n_designs(design_summary_df, n=n_top)
 top_part_entries, top_joint_entries = get_top_part_and_joint_entries(top_n_designs, final_part_entries, final_joint_entries)
 
-print(f"Final {n_top} designs. Writing {len(top_part_entries)} part entries and {len(top_joint_entries)} joint entries to Excel (this may take another while)...")
+print(f"\nFinal {n_top} designs. Writing {len(top_part_entries)} part entries and {len(top_joint_entries)} joint entries to Excel (this may take another while)...")
 final_values = update_and_read_excel(cfg.cost_calc_path, top_part_entries, top_joint_entries, submodule_type=cfg.submodule_type)
 final_values = sorted(final_values, key=lambda x: x[-1])  # Sort by cost
 for i, value in enumerate(final_values):

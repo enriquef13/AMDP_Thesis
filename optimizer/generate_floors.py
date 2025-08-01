@@ -420,7 +420,7 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
 
 def generate_top_n_floors(n_top, plot=False):
     top_floors = []
-    print(f"\nAttempting to generate {cfg.n_configurations} structurally sound floor configurations...")
+    print(f"\nGenerating structurally sound floor configurations...")
     for gauge in [10, 12, 14, 16, 18]:
         floors = fill_floor_with_panels(gauge, n_sols=50)
         top_floors.extend(floors)
@@ -434,3 +434,7 @@ def generate_top_n_floors(n_top, plot=False):
 
     print(f"✅ Top {n_top} floor designs generated and saved as images.\n")
     return top_floors
+
+# plot_panel_thicknesses(max_width=90, max_length=90, step_size=0.1, 
+#                        water_height_in=cfg.water_height_in, material=cfg.material,
+#                        floor=True)

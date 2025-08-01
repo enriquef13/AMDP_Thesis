@@ -276,7 +276,7 @@ class Capabilities:
 
     def plot_feasible_regions(self):
         self._get_constraints(1e-3, 340, 400)
-        plt.figure(figsize=(10, 10))
+        plt.figure(figsize=(7, 7))
         # Plot TL region in red
         plt.contourf(self.X, self.Y, self.TL_feasible, levels=[0.5, 1], colors=self.region_colors['TL'], alpha=0.5)
         # Plot MPB region in blue
@@ -290,18 +290,18 @@ class Capabilities:
         title_x = 0.1
         ax.text(0.49 - title_x, title_y, f'Feasible Manufacturing Regions: ', transform=ax.transAxes, 
                 fontsize=14, ha='center', va='bottom', fontweight='bold')
-        ax.text(0.75 - title_x, title_y, 'TL', transform=ax.transAxes, 
+        ax.text(0.85 - title_x, title_y, 'TL', transform=ax.transAxes, 
                 color=self.region_colors['TL'], fontsize=14, ha='center', va='bottom', fontweight='bold')
-        ax.text(0.78 - title_x, title_y, ' | ', transform=ax.transAxes, 
+        ax.text(0.89 - title_x, title_y, ' | ', transform=ax.transAxes, 
                 color='black', fontsize=14, ha='center', va='bottom', fontweight='bold')
-        ax.text(0.82 - title_x, title_y, 'MPB', transform=ax.transAxes, 
+        ax.text(0.945 - title_x, title_y, 'MPB', transform=ax.transAxes, 
                 color=self.region_colors['MPB'], fontsize=14, ha='center', va='bottom', fontweight='bold')
-        ax.text(0.86 - title_x, title_y, ' | ', transform=ax.transAxes, 
+        ax.text(1.00 - title_x, title_y, ' | ', transform=ax.transAxes, 
                 color='black', fontsize=14, ha='center', va='bottom', fontweight='bold')
-        ax.text(0.90 - title_x, title_y, 'APB', transform=ax.transAxes, 
+        ax.text(1.055 - title_x, title_y, 'APB', transform=ax.transAxes, 
                 color=self.region_colors['APB'], fontsize=14, ha='center', va='bottom', fontweight='bold')
         
-        ax.text(0.57 - title_x, title_y - 0.03, f'Gauge: {self.gauge}, Material: {self.material}', transform=ax.transAxes,
+        ax.text(0.57 - title_x, title_y - 0.04, f'Gauge: {self.gauge}, Material: {self.material}', transform=ax.transAxes,
                 fontsize=14, ha='center', va='bottom', fontweight='bold')
 
         plt.axvline(self.max_sheet_width, color='black', linestyle='-', label=f'Max sheet dim = {self.max_sheet_width}, {self.max_sheet_length}')
@@ -457,7 +457,7 @@ class Capabilities:
 
         # Plot all heatmaps with the same scale and axes
         for region, arr in self.all_costs.items():
-            plt.figure(figsize=(10, 8))
+            plt.figure(figsize=(9, 7))
             masked_arr = np.ma.masked_invalid(arr)
             plt.imshow(masked_arr, origin='lower', extent=[0, 340, 0, 340], aspect='auto',
                     cmap=cmap, vmin=fixed_vmin, vmax=fixed_vmax)
@@ -465,8 +465,8 @@ class Capabilities:
             plt.xlabel('Width (in)')
             plt.ylabel('Length (in)')
             plt.suptitle(f'Total Cost Heatmap\nGauge: {self.gauge}, Material: {self.material}, Region: ', 
-                        fontsize=14, fontweight='bold', color='black', y=0.95)
-            plt.figtext(0.688, 0.902, f'{region.upper()}', fontsize=14, fontweight='bold', 
+                        fontsize=14, fontweight='bold', color='black', y=0.95, x=0.43)
+            plt.figtext(0.631, 0.897, f'{region.upper()}', fontsize=14, fontweight='bold', 
                        color=self.region_colors.get(region, 'black'), ha='left')
             plt.xlim(0, 340)
             plt.ylim(0, 340)
@@ -606,7 +606,7 @@ class Capabilities:
         cmap = LinearSegmentedColormap.from_list('light_grey_to_black', colors, N=n_bins)
 
         # Create the combined plot
-        plt.figure(figsize=(12, 10))
+        plt.figure(figsize=(9, 7))
         
         # Plot the cost heatmap
         masked_arr = np.ma.masked_invalid(optimal_costs)
@@ -819,7 +819,7 @@ class Capabilities:
             diff_vmin, diff_vmax = 0, 1
 
         # Create the plot
-        plt.figure(figsize=(12, 10))
+        plt.figure(figsize=(9, 7))
         
         # Plot the cost difference heatmap (only for multi-process regions)
         masked_differences = np.ma.masked_where(~multi_process_mask, cost_differences)

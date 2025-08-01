@@ -80,7 +80,7 @@ def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_
         # Write submodule type to the summary sheet
         summary_sheet = workbook[summary_sheet_name]
 
-        distinct_sets = sorted(list({entry[0] for entry in part_entries}))
+        distinct_sets = list({entry[0] for entry in part_entries})
         set_num = 0
         for i in range(summary_row, len(distinct_sets) + summary_row):
             summary_sheet.cell(row=i, column=1, value=distinct_sets[set_num])

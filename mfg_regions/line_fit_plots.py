@@ -1,7 +1,7 @@
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # type: ignore
 import numpy as np
-from scipy.stats import f
-import scipy.stats as stats
+from scipy.stats import f # type: ignore
+import scipy.stats as stats # type: ignore
 
 GLV = [4.71,
        7.60,
@@ -88,19 +88,24 @@ def scatter_costs():
     glv_residuals = GLV - glv_trend(WEIGHT)
     sst_residuals = SST - sst_trend(WEIGHT)
 
-    # Plot Q-Q plot for GLV residuals
+    # Normalize residuals
+    glv_residuals_normalized = glv_residuals / np.max(np.abs(glv_residuals))
+    sst_residuals_normalized = sst_residuals / np.max(np.abs(sst_residuals))
+
+    # Plot Q-Q plot for normalized GLV residuals
     plt.figure(figsize=(6, 4))
-    stats.probplot(glv_residuals, dist="norm", plot=plt)
-    plt.title("Q-Q Plot for GLV Residuals.\nRollforming Cost Model.", fontsize=16, fontweight='bold', color='black')
+    stats.probplot(glv_residuals_normalized, dist="norm", plot=plt)
+    plt.title("Q-Q Plot for Normalized GLV Residuals.\nRollforming Cost Model.", fontsize=16, fontweight='bold', color='black')
+    plt.yticks([-1, -0.5, 0, 0.5, 1])  # Set y-ticks
     plt.tight_layout()
     plt.show()
 
-    # Plot Q-Q plot for SST residuals
+    # Plot Q-Q plot for normalized SST residuals
     plt.figure(figsize=(6, 4))
-    stats.probplot(sst_residuals, dist="norm", plot=plt)
-    plt.title("Q-Q Plot for SST Residuals.\nRollforming Cost Model.", fontsize=16, fontweight='bold', color='black')
+    stats.probplot(sst_residuals_normalized, dist="norm", plot=plt)
+    plt.title("Q-Q Plot for Normalized SST Residuals.\nRollforming Cost Model.", fontsize=16, fontweight='bold', color='black')
+    plt.yticks([-1, -0.5, 0, 0.5, 1])  # Set y-ticks
     plt.tight_layout()
     plt.show()
-
 
 scatter_costs()

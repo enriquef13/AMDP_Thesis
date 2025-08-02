@@ -9,6 +9,7 @@ Sub Main()
     ' Tolerance for considering parts as "touching"
     Dim touchTolerance As Double = 0.15 ' Adjust this value as needed (in inches)
     Dim minJointLength As Double = 0.5  ' Minimum length to consider a joint valid (in inches)
+    Dim unitLength As Double = 2.54     ' Conversion factor from cm to inches (1 inch = 2.54 cm)
     
 	' Dictionary to store contact pairs and contact lengths
     Dim contactLengths As New Dictionary(Of String, Double)
@@ -79,8 +80,8 @@ End Sub
 ' Function to check if bounding boxes are close (quick preliminary check)
 Function AreBoundingBoxesClose(comp1 As ComponentOccurrence, comp2 As ComponentOccurrence, tolerance As Double) As Boolean
     Try
-        ' Convert tolerance from document units to inches (assuming 1 inch = 2.54 cm)
-        tolerance = tolerance * 2.54
+        ' Convert tolerance from document units to desired units
+        tolerance = tolerance * unitLength
 
         Dim box1 As Box = comp1.RangeBox
         Dim box2 As Box = comp2.RangeBox
@@ -93,14 +94,14 @@ Function AreBoundingBoxesClose(comp1 As ComponentOccurrence, comp2 As ComponentO
         Return xOverlap And yOverlap And zOverlap
         
     Catch
-        Return False ' If we can't get bounding boxes, assume they might be close
+        Return False
     End Try
 End Function
 
 Function GetContactLengthBetweenParts(comp1 As ComponentOccurrence, comp2 As ComponentOccurrence, tolerance As Double) As Double
     Try
         Dim maxContactLength As Double = 0.0
-        tolerance = tolerance * 2.54 ' Convert tolerance from document units to inches (assuming 1 inch = 2.54 cm)
+        tolerance = tolerance * unitLength
 
         For Each body1 As SurfaceBody In comp1.SurfaceBodies
             For Each face1 As Face In body1.Faces
@@ -127,8 +128,8 @@ Function GetContactLengthBetweenParts(comp1 As ComponentOccurrence, comp2 As Com
             Next
         Next
 
-        ' Convert length from document units to inches (assuming 1 inch = 2.54 cm)
-        Return maxContactLength / 2.54
+        ' Convert length from document units to desired units
+        Return maxContactLength / unitLength
 
     Catch
         Return 0.0

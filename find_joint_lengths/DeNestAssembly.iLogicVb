@@ -1,5 +1,6 @@
 Sub Main()
     Dim doc As AssemblyDocument = ThisApplication.ActiveDocument
+    ' Ensure the active document is an assembly
     If doc.DocumentType <> DocumentTypeEnum.kAssemblyDocumentObject Then
         MessageBox.Show("This rule only works on assembly documents.", "Error")
         Return
@@ -8,9 +9,9 @@ Sub Main()
     Dim asmDef As AssemblyComponentDefinition = doc.ComponentDefinition
     Dim toRemove As New List(Of ComponentOccurrence)
 
+    ' Iterate through all part occurrences in the assembly
     For Each occ As ComponentOccurrence In asmDef.Occurrences
         If occ.DefinitionDocumentType = DocumentTypeEnum.kAssemblyDocumentObject Then
-            ' Make sure subassembly transform is defined
             If Not occ.Grounded Then occ.Grounded = True
 
             ' Promote all child parts of this subassembly to top level
@@ -32,7 +33,7 @@ Sub Main()
         End If
     Next
 
-    ' Remove old subassemblies
+    ' Remove old subassemblies from the main assembly
     For Each occ As ComponentOccurrence In toRemove
         Try
             occ.Delete()

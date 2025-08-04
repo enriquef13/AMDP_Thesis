@@ -181,16 +181,13 @@ class Capabilities:
         app = None
         wb = None
         try:
-            print("Opening Excel workbook...")
             app = xw.App(visible=False)
             wb = app.books.open(excel_path)
             ws = wb.sheets['BAC Part List']
-            print("Excel opened successfully")
             
             # Write all inputs in batch
             end_row = start_row + len(lengths) - 1
             
-            print(f"Writing inputs to rows {start_row} to {end_row}...")
             ws.range(f"{self.input_cols['length']}{start_row}:{self.input_cols['length']}{end_row}").value = [[v] for v in lengths]
             ws.range(f"{self.input_cols['width']}{start_row}:{self.input_cols['width']}{end_row}").value = [[v] for v in widths]
             ws.range(f"{self.input_cols['quantity']}{start_row}:{self.input_cols['quantity']}{end_row}").value = [[v] for v in quantities]
@@ -204,12 +201,9 @@ class Capabilities:
             ws.range(f"{self.input_cols['K']}{start_row}:{self.input_cols['K']}{end_row}").value = [[v] for v in Ks]
             ws.range(f"{self.input_cols['N']}{start_row}:{self.input_cols['N']}{end_row}").value = [[v] for v in Ns]
             
-            print("Calculating Excel formulas...")
             wb.app.calculate()
-            print("Excel calculation completed")
             
             # Read all costs in batch
-            print("Reading batch results...")
             cost_col = self.cost_cells['Total Cost']
             self.cost_range = ws.range(f"{cost_col}{start_row}:{cost_col}{end_row}").value
             if isinstance(self.cost_range, list) and len(self.cost_range) > 0 and isinstance(self.cost_range[0], list):
@@ -220,24 +214,19 @@ class Capabilities:
             print(f"Read {len(self.cost_range)} cost values")
             
             # Clear inputs
-            print("Clearing Excel inputs...")
             for col in self.input_cols.values():
                 ws.range(f"{col}{start_row}:{col}{end_row}").clear_contents()
-            print("Excel inputs cleared")
             
         finally:
             if wb is not None:
                 wb.close()
             if app is not None:
                 app.quit()
-            print("Excel closed")
 
     def _get_all_costs(self, excel_path, start_row, fastener_spacing, region, proc1, proc2, fastener_func, bolt_diameter):
         all_points = {}
 
-        print(f"Generating costs for region: {region}")
         mask = self.region_masks[region]
-        print(f"Number of feasible points: {np.sum(mask)}")
 
         # Prepare input data for all feasible points
         points = np.argwhere(mask)
@@ -262,7 +251,7 @@ class Capabilities:
         ]
         Js = [4] * num_points
         Ks = [4] * num_points
-        Ns = ["Class 2"] * num_points
+        Ns = [self._get_assy_category(l, w) for l, w in zip(lengths, widths)]
 
         self._write_inputs_to_excel(excel_path, start_row, fastener_spacing, lengths, 
                                      widths, quantities, process1s, process2s, material_codes, 
@@ -461,7 +450,12 @@ class Capabilities:
             masked_arr = np.ma.masked_invalid(arr)
             plt.imshow(masked_arr, origin='lower', extent=[0, 340, 0, 340], aspect='auto',
                     cmap=cmap, vmin=fixed_vmin, vmax=fixed_vmax)
-            plt.colorbar(label='Total Cost ($)')
+            cbar = plt.colorbar(label='Total Cost ($)')
+            cbar.set_ticks([])
+            cbar.ax.text(0.5, -0.05, 'Min', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
+            cbar.ax.text(0.5, 1.05, 'Max', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
+        
+
             plt.xlabel('Width (in)')
             plt.ylabel('Length (in)')
             plt.suptitle(f'Total Cost Heatmap\nGauge: {self.gauge}, Material: {self.material}, Region: ', 
@@ -612,7 +606,11 @@ class Capabilities:
         masked_arr = np.ma.masked_invalid(optimal_costs)
         plt.imshow(masked_arr, origin='lower', extent=[0, 340, 0, 340], aspect='auto',
                 cmap=cmap, vmin=fixed_vmin, vmax=fixed_vmax)
-        plt.colorbar(label='Total Cost ($)')
+        cbar = plt.colorbar(label='Total Cost ($)', )
+        cbar.set_ticks([])
+        cbar.ax.text(0.5, -0.05, 'Min', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
+        cbar.ax.text(0.5, 1.05, 'Max', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
+        
 
         # Create process boundary contours
         for region in self.region_inputs.keys():
@@ -647,7 +645,20 @@ class Capabilities:
         plt.ylim(0, 340)
         plt.show()
         
-        return region_stats
+        # Calculate average cost per unit area for each manufacturing value stream
+        for region, costs in self.all_costs.items():
+            if costs is not None:
+                valid_points = ~np.isnan(costs)
+                lengths = self.Y[valid_points]
+                widths = self.X[valid_points]
+                areas = lengths * widths
+                costs_per_area = costs[valid_points] / areas
+                avg_cost_per_area = np.mean(costs_per_area)
+                std_cost_per_area = np.std(costs_per_area)
+                print(f"Average cost per sq in for {region.upper()}: ${avg_cost_per_area:.4f}")
+                print(f"Standard deviation of cost per sq in for {region.upper()}: ${std_cost_per_area:.4f}")
+            else:
+                print(f"No valid costs for {region.upper()}.")
 
     def plot_cost_difference_heatmap(self, excel_path, start_row=150, fastener_spacing=3, bolt_diameter=0.3125, n_bins=100):
         """
@@ -830,7 +841,10 @@ class Capabilities:
         
         plt.imshow(masked_differences, origin='lower', extent=[0, 340, 0, 340], aspect='auto',
                 cmap=cmap, vmin=diff_vmin, vmax=diff_vmax)
-        plt.colorbar(label='Cost Difference ($)')
+        cbar = plt.colorbar(label='Cost Difference ($)')
+        cbar.set_ticks([])
+        cbar.ax.text(0.5, -0.05, 'Min', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
+        cbar.ax.text(0.5, 1.05, 'Max', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
         
         # Add boundary lines for optimal process regions (only where multiple processes exist)
         for region in self.region_inputs.keys():
@@ -861,6 +875,40 @@ class Capabilities:
         
         plt.show()
         
+        # Calculate average cost difference per sq in and standard deviation for TL and APB
+        for region in ['TL', 'APB']:
+            mask = (optimal_process == region) & multi_process_mask
+            if np.any(mask):
+                lengths = self.Y[mask]
+                widths = self.X[mask]
+
+                # Filter out negative values
+                valid_mask = (lengths > 0) & (widths > 0)
+                lengths = lengths[valid_mask]
+                widths = widths[valid_mask]
+
+                if len(lengths) == 0 or len(widths) == 0:
+                    print(f"No valid lengths or widths for {region} after filtering negative values.")
+                    continue
+
+                areas = lengths * widths
+                cost_differences_per_area = cost_differences[mask][valid_mask] / areas
+
+                # Debugging statements
+                print(f"Debugging {region}:")
+                print(f"  Lengths: {lengths}")
+                print(f"  Widths: {widths}")
+                print(f"  Areas: {areas}")
+                print(f"  Cost Differences: {cost_differences[mask][valid_mask]}")
+                print(f"  Cost Differences per Area: {cost_differences_per_area}")
+
+                avg_cost_diff_per_area = np.mean(cost_differences_per_area)
+                std_cost_diff_per_area = np.std(cost_differences_per_area)
+                print(f"Average cost difference per sq in for {region}: ${avg_cost_diff_per_area:.4f}")
+                print(f"Standard deviation of cost difference per sq in for {region}: ${std_cost_diff_per_area:.4f}")
+            else:
+                print(f"No competitive areas for {region}.")
+
         return region_stats
     
     def plot_cost_run_chart(self, excel_path, start_length, start_width, end_length, end_width, 
@@ -966,8 +1014,8 @@ class Capabilities:
             batch_perim_plus_fastener.append(perim_plus_fastener)
             batch_Js.append(4)
             batch_Ks.append(4)
-            batch_Ns.append("Class 2")
-            
+            batch_Ns.append(self._get_assy_category(length, width))
+
             # Map Excel row to (point_index, process) for result extraction
             point_process_map[excel_row_idx] = (point_idx, region)
         
@@ -1065,3 +1113,14 @@ class Capabilities:
             'costs': path_costs,
             'processes': path_processes
         }
+    
+    def _get_assy_category(self, length, width):
+        weight = self.density[self.gauge_material] * length * width
+        if weight < 10:
+            return "Class 1"
+        elif weight <= 50 and max(length, width) < 72:
+            return "Class 2"
+        elif weight <= 100:
+            return "Class 3"
+        else:
+            return "Class 4"

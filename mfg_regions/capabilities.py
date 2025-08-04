@@ -453,7 +453,7 @@ class Capabilities:
             cbar = plt.colorbar(label='Total Cost ($)')
             cbar.set_ticks([])
             cbar.ax.text(0.5, -0.05, 'Min', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
-            cbar.ax.text(0.5, 1.05, 'Max', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
+            cbar.ax.text(0.5, 1.04, 'Max', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
         
 
             plt.xlabel('Width (in)')
@@ -609,7 +609,7 @@ class Capabilities:
         cbar = plt.colorbar(label='Total Cost ($)', )
         cbar.set_ticks([])
         cbar.ax.text(0.5, -0.05, 'Min', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
-        cbar.ax.text(0.5, 1.05, 'Max', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
+        cbar.ax.text(0.5, 1.04, 'Max', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
         
 
         # Create process boundary contours
@@ -844,7 +844,7 @@ class Capabilities:
         cbar = plt.colorbar(label='Cost Difference ($)')
         cbar.set_ticks([])
         cbar.ax.text(0.5, -0.05, 'Min', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
-        cbar.ax.text(0.5, 1.05, 'Max', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
+        cbar.ax.text(0.5, 1.04, 'Max', ha='center', va='center', transform=cbar.ax.transAxes, fontsize=10)
         
         # Add boundary lines for optimal process regions (only where multiple processes exist)
         for region in self.region_inputs.keys():
@@ -868,7 +868,7 @@ class Capabilities:
         
         plt.xlabel('Width (in)')
         plt.ylabel('Length (in)')
-        plt.suptitle(f'Cost Comparison of Shared Manufacturing Regions\nGauge: {self.gauge}, Material: {self.material}', 
+        plt.suptitle(f' Comparison of Shared Manufacturing Regions\nGauge: {self.gauge}, Material: {self.material}', 
                     fontsize=14, fontweight='bold', color='black', y=0.975)
         plt.xlim(0, 340)
         plt.ylim(0, 340)
@@ -893,14 +893,6 @@ class Capabilities:
 
                 areas = lengths * widths
                 cost_differences_per_area = cost_differences[mask][valid_mask] / areas
-
-                # Debugging statements
-                print(f"Debugging {region}:")
-                print(f"  Lengths: {lengths}")
-                print(f"  Widths: {widths}")
-                print(f"  Areas: {areas}")
-                print(f"  Cost Differences: {cost_differences[mask][valid_mask]}")
-                print(f"  Cost Differences per Area: {cost_differences_per_area}")
 
                 avg_cost_diff_per_area = np.mean(cost_differences_per_area)
                 std_cost_diff_per_area = np.std(cost_differences_per_area)

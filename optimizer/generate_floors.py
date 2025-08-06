@@ -228,7 +228,6 @@ def _obtain_channels(panels, gauge, floor_width=cfg.x_in, floor_length=cfg.y_in,
     current_x = 0
     current_y = 0
     last_panel_length = 0
-
     channels = []
     for panel in panels:
         panel_width, panel_length, panel_weight = panel
@@ -247,7 +246,7 @@ def _obtain_channels(panels, gauge, floor_width=cfg.x_in, floor_length=cfg.y_in,
                 if x < current_x + panel_width:
                     channel_weight = channel_perimeter * floor_length * channel_density
                     channels.append([x, floor_length, channel_weight])
-                
+        
         elif not vertical and current_x == 0:
             # Calculate the number of horizontal channels and their positions
             usable_length = panel_length - channel_width * math.ceil(panel_length / spacing)
@@ -423,6 +422,8 @@ def generate_top_n_floors(n_top, plot=False):
     print(f"\nGenerating structurally sound floor configurations...")
     for gauge in [10, 12, 14, 16, 18]:
         floors = fill_floor_with_panels(gauge, n_sols=50)
+        # Eliminate floors with no channels
+        floors = [floor for floor in floors if len(floor['channels']) > 0]
         top_floors.extend(floors)
 
     top_floors = sorted(top_floors, 
@@ -435,6 +436,4 @@ def generate_top_n_floors(n_top, plot=False):
     print(f"✅ Top {n_top} floor designs generated and saved as images.\n")
     return top_floors
 
-# plot_panel_thicknesses(max_width=90, max_length=90, step_size=0.1, 
-#                        water_height_in=cfg.water_height_in, material=cfg.material,
-#                        floor=True)
+# plot_panel_thicknesses(step_size=0.1, material=gd.SST, floor=True)

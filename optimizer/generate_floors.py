@@ -332,10 +332,10 @@ def visualize_filled_floor(floor, design_name="Floor", floor_width=cfg.x_in, flo
         center_y = current_y + panel_length / 2
         if panel_width > panel_length:
             ax.text(center_x, center_y, f"{panel_width:.0f}\nx\n{panel_length:.0f}", 
-                    ha='center', va='center', fontsize=12, color='black', fontweight='bold')
+                    ha='center', va='center', fontsize=12, color='blue', fontweight='bold')
         else:
             ax.text(center_x, center_y, f"{panel_width:.0f} x {panel_length:.0f}", 
-                    ha='center', va='center', fontsize=12, color='black', rotation=90, fontweight='bold')
+                    ha='center', va='center', fontsize=12, color='blue', rotation=90, fontweight='bold')
         
         # Move the x position for the next panel
         current_x += panel_width

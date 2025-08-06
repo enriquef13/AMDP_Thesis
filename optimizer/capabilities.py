@@ -54,9 +54,11 @@ class Capabilities:
         self.APB_max_flange_length = 8
         self.APB_min_flange_length = self.thickness * 5
         self.APB_min_throat_length = 15.75
+        self.APB_min_throat_width = 4.72
         self.APB_max_flat_diagonal = 157.48
         self.APB_max_mass = 286.6
-        self.APB_min_width = self.APB_min_length = self.APB_min_throat_length + 2 * (self.APB_max_flange_length * 4/8)
+        self.APB_min_length = self.APB_min_width = self.APB_min_throat_length + 2 * (self.APB_max_flange_length * 4/8)
+        # self.APB_min_width = self.APB_min_throat_width + 2 * (self.APB_max_flange_length * 4/8) # Correct this in the future to account for the minimum throat width
         self.APB_max_width = self.APB_max_length = self.max_flange_width[self.gauge_material]
 
         self.MPB_max_dim = 168

@@ -229,6 +229,14 @@ def calculate_wall_frame_structural(nodes, members, channel, q, display=False, p
                     )
                     ax.add_patch(rect)
 
+                    # Add text showing panel dimensions
+                    panel_height = y_max - y_min
+                    ax.text(
+                        current_x + panel_width / 2, y_max + 2,  # Position text above the panel
+                        f"{panel_width:.0f} x {panel_height:.0f} in",  # Format dimensions
+                        fontsize=12, ha='center', va='bottom', color='blue', fontweight='bold'
+                    )
+
                     current_x += panel_width
 
         # Axes and grid adjustments

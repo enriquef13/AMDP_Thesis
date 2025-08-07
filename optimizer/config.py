@@ -3,9 +3,9 @@ import general_data as gd
 # Example of HXV3 S3 basin (22 ft x 14 ft x 27 in)
 submodule_type = gd.WATER_COLLECTION_WELDED       # Type of submodule
 material = gd.SST                                 # Material type (gd.SST or gd.GLV)
-x_in = 310                                        # Longer dimension in inches (min 26, max 145)
-y_in = 160                                        # Shorter dimension in inches (min 26, max 145)
-z_in = 27                                         # Basin height in inches (min 26 inches, max 50 inches)
+x_in = 310                                        # Longer dimension in inches (min 19)
+y_in = 160                                        # Shorter dimension in inches (min 19)
+z_in = 27                                         # Basin height in inches (min 19 inches, max 50 inches)
 water_height_in = 15                              # Water height in inches
 top_load = 40000                                  # Uniform load on top edges (lbf)
 

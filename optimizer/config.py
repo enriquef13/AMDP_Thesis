@@ -10,12 +10,12 @@ water_height_in = 15                              # Water height in inches
 top_load = 40000                                  # Uniform load on top edges (lbf)
 
 
-cost_calc_path = 'cost_calculator.xlsx' # Path to the Cost Calculator Excel file
-store_path = 'optimizer/s3_hxv3_sst_cons_0.9/'                             # Path to store generated plots
-n_top_final_designs = 15                          # Number of top designs to consider (max 100)
-n_configurations = 30                             # Number of design configurations used to generate the top designs (max 30)
+cost_calc_path = 'cost_calc/cost_calculator.xlsx' # Path to the Cost Calculator Excel file
+store_path = 'plots'                              # Path to store generated plots
+n_top_final_designs = 10                          # Number of top designs to consider (max 100)
+n_configurations = 15                             # Number of design configurations used to generate the top designs (max 30)
 
 # OPTIONAL: Define APB - TL ratio
-use_ratio = True                                 # Require a ratio of panel bender to tube laser in generated designs
+use_ratio = False                                 # Require a ratio of panel bender to tube laser in generated designs
 APB_ratio = 0.4                                   # Ratio that will go into the panel bender vs tube laser
 ratio_variance = 0.1                              # Allowed variation (+/-) in the ratio of panel bender to tube laser

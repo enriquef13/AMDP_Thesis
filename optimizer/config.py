@@ -7,7 +7,7 @@ x_in = 310                                        # Longer dimension in inches (
 y_in = 160                                        # Shorter dimension in inches (min 26, max 145)
 z_in = 27                                         # Basin height in inches (min 26 inches, max 50 inches)
 water_height_in = 15                              # Water height in inches
-top_load = 12500                                  # Uniform load on top edges (lbf)
+top_load = 40000                                  # Uniform load on top edges (lbf)
 
 
 cost_calc_path = 'cost_calc/cost_calculator.xlsx' # Path to the Cost Calculator Excel file

@@ -34,10 +34,10 @@ def get_wall_parts(frame, design_name):
     panel_material = details['panel_material']
     
     panel_bends = 4
-    panel_class = _get_assy_category(cap, panel_gauge, panel_material, panel_height+10, panel_width+10)
+    panel_class = _get_assy_category(cap, panel_gauge, panel_material, panel_height+6, panel_width+6)
 
     part_name = f"W_Panel_{wall_type}_{design_name}"
-    panel_entry = _get_entry(design_name, part_name, panel_height+10, panel_width+10,
+    panel_entry = _get_entry(design_name, part_name, panel_height+6, panel_width+6,
                              n_panels * 2, gd.CUT_MSP, gd.FORM_APB,
                              panel_material, panel_gauge, panel_bends, panel_class)
     part_entries.append(panel_entry)
@@ -143,9 +143,9 @@ def get_floor_parts(floor, design_name):
     panel_gauge = cap.gauge 
     panel_material = cfg.material
     panel_bends = 4
-    b_panel_class = _get_assy_category(cap, panel_gauge, panel_material, b_panel_length+10, b_panel_width+10)
+    b_panel_class = _get_assy_category(cap, panel_gauge, panel_material, b_panel_length+3, b_panel_width+9)
 
-    panel_entry = _get_entry(design_name, f"F_Panel_B_{design_name}", b_panel_width+10, b_panel_length+10,
+    panel_entry = _get_entry(design_name, f"F_Panel_B_{design_name}", b_panel_width+9, b_panel_length+3,
                              n_panels, gd.CUT_MSP, gd.FORM_APB,
                              panel_material, panel_gauge, panel_bends, b_panel_class)
     part_entries.append(panel_entry)
@@ -153,8 +153,8 @@ def get_floor_parts(floor, design_name):
     if not all_same:
         t_panel_width = panels[-1][0]
         t_panel_length = panels[-1][1]
-        t_panel_class = _get_assy_category(cap, panel_gauge, panel_material, t_panel_length+10, t_panel_width+10)
-        panel_entry = _get_entry(design_name, f"F_Panel_T_{design_name}", t_panel_width+10, t_panel_length+10,
+        t_panel_class = _get_assy_category(cap, panel_gauge, panel_material, t_panel_length+3, t_panel_width+9)
+        panel_entry = _get_entry(design_name, f"F_Panel_T_{design_name}", t_panel_width+9, t_panel_length+3,
                                  n_panels, gd.CUT_MSP, gd.FORM_APB,
                                  panel_material, panel_gauge, panel_bends, t_panel_class)
         part_entries.append(panel_entry)

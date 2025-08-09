@@ -9,11 +9,10 @@ z_in = 27                                         # Basin height in inches (min 
 water_height_in = 15                              # Water height in inches
 top_load = 40000                                  # Uniform load on top edges (lbf)
 
-
 cost_calc_path = 'cost_calc/cost_calculator.xlsx' # Path to the Cost Calculator Excel file
 store_path = 'plots'                              # Path to store generated plots
-n_top_final_designs = 10                          # Number of top designs to consider (max 100)
-n_configurations = 15                             # Number of design configurations used to generate the top designs (max 30)
+n_top_final_designs = 15                          # Number of top designs to consider (max 100)
+n_configurations = 30                             # Number of design configurations used to generate the top designs (max 30)
 
 # OPTIONAL: Define APB - TL ratio
 use_ratio = False                                 # Require a ratio of panel bender to tube laser in generated designs

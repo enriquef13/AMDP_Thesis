@@ -24,8 +24,8 @@ def plot_1():
 
     # Add labels, title, and legend
     ax.set_xticks(x)
-    ax.set_xticklabels(categories, fontsize=12, fontweight='bold')
-    ax.set_ylabel('Cost ($)', fontsize=14, fontweight='bold')
+    ax.set_xticklabels(categories, fontsize=12)
+    ax.set_ylabel('Cost ($)', fontsize=14)
     ax.set_title('MPB vs APB-TL: Cost Comparison', fontsize=16, fontweight='bold')
     ax.legend(fontsize=12)
 
@@ -99,13 +99,76 @@ def plot_2():
     ax.plot(iterations, trendline, color='orange', linestyle='--', label=f'Trendline (R²={r2_score(assembly_cost, trendline):.2f}), F={f_stat:.1f}>{f_critical:.1f}')
     ax.set_xlabel('Iteration', fontsize=12)
     ax.set_ylabel('Assembly Cost ($)', fontsize=12)
-    ax.set_title('Assembly Cost', fontsize=14, fontweight='bold')
+    ax.set_title('Assembly Cost', fontsize=14)
     ax.set_ylim(min(assembly_cost) * 0.9, max(assembly_cost) * 1.1)  # Adjust y-axis limit for better visibility
-    ax.legend(fontsize=10, loc='upper left')
+    ax.legend(fontsize=10, loc='upper right')
 
     # Adjust layout
     plt.tight_layout()
     plt.show()
 
-plot_1()
+def plot_stacked_bar_chart():
+    # Data
+    iterations = ['2%', '12%', '57%', '58%', '59%', '59%', '74%', '78%', '100%']
+    material_cost = [7625, 8037, 9995, 9317, 9060, 9322, 9494, 10431, 10057]
+    labor_cost = [3243, 3268, 3667, 3464, 2529, 2592, 3378, 4459, 3472]
+    assembly_cost = [2636, 2853, 3453, 3244, 3062, 3035, 3314, 3773, 3968]
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Bar positions
+    x = np.arange(len(iterations))
+    bar_width = 0.6
+
+    # Plot stacked bars
+    ax.bar(x, material_cost, bar_width, label='Material Cost', color='#4f8cd6')
+    ax.bar(x, labor_cost, bar_width, bottom=material_cost, label='Fabrication Cost', color='#e74c3c')
+    ax.bar(x, assembly_cost, bar_width, bottom=np.array(material_cost) + np.array(labor_cost), label='Assembly Cost', color='#66c2a5')
+
+    # Add labels, title, and legend
+    ax.set_xticks(x)
+    ax.set_xticklabels(iterations, fontsize=12)
+    ax.set_ylabel('Cost ($)', fontsize=14)
+    ax.set_title('Cost Across APB Compliance Iterations', fontsize=16, fontweight='bold')
+    ax.legend(fontsize=12, loc='lower right')
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
+
+def plot_case_a():
+    # Data
+    products = ['Optimized', 'Legacy', 'Concept']
+    material_cost = [6238, 7625, 9060]
+    fabrication_cost = [2071, 2891, 2427]
+    assembly_cost = [2652, 2636, 3062]
+
+    # Bar positions
+    y = np.arange(len(products))
+    bar_height = 0.6
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    # Plot stacked bars
+    ax.barh(y, material_cost, bar_height, label='Material Cost', color='#4f8cd6')
+    ax.barh(y, fabrication_cost, bar_height, left=material_cost, label='Fabrication Cost', color='#e74c3c')
+    ax.barh(y, assembly_cost, bar_height, left=np.array(material_cost) + np.array(fabrication_cost), label='Assembly Cost', color='#66c2a5')
+
+    # Add labels, title, and legend
+    ax.set_yticks(y)
+    ax.set_yticklabels(products, fontsize=12, rotation=45, ha='right')
+    ax.set_xlabel('Cost ($)', fontsize=14)
+    ax.set_title('Case A: SST', fontsize=16, fontweight='bold')
+    ax.legend(fontsize=12, loc='upper left')
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
+
+plot_case_a()
+
+# plot_stacked_bar_chart()
+# plot_1()
 # plot_2()

@@ -11,7 +11,7 @@ top_load = 40000                                    # Uniform load on top edges 
 
 cost_calc_path = 'cost_calc/cost_calculator.xlsx'   # Path to the Cost Calculator Excel file
 store_path = 'plots'                                # Path to store generated plots
-n_top_final_designs = 15                            # Number of top designs to consider (max 100)
+N_top_final_designs = 15                            # Number of top designs to consider (max 100)
 n_configurations = 30                               # Number of design configurations used to generate the top designs (max 30)
 
 # OPTIONAL: Define APB - TL ratio

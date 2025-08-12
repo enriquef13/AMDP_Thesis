@@ -98,7 +98,7 @@ def update_and_read_excel(filepath, part_entries, joint_entries=None, submodule_
         # Read calculated values ()
         calculated_values = []
         for i in range(summary_row, len(distinct_sets) + summary_row):
-            row_values = [summary_sheet.cell(row=i, column=col).value for col in range(1, 13)]  # Adjust columns as needed
+            row_values = [summary_sheet.cell(row=i, column=col).value for col in range(1, 12)]  # Adjust columns as needed
             calculated_values.append(row_values)
         
         return calculated_values
